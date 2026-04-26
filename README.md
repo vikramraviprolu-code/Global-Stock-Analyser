@@ -65,8 +65,8 @@ exchanges** in **14 currencies**.
 ### Install & run
 
 ```bash
-git clone https://github.com/vikramraviprolu-code/equityscope.git
-cd equityscope
+git clone https://github.com/vikramraviprolu-code/Global-Stock-Analyser.git
+cd Global-Stock-Analyser
 pip install -r requirements.txt
 python app.py
 ```
@@ -78,8 +78,8 @@ No API keys required. Data sourced from Stooq (CSV) with yfinance fallback.
 ### Docker (optional)
 
 ```bash
-docker build -t equityscope .
-docker run -p 5050:5050 equityscope
+docker build -t global-stock-analyser .
+docker run -p 5050:5050 global-stock-analyser
 ```
 
 ---
@@ -87,7 +87,7 @@ docker run -p 5050:5050 equityscope
 ## Project layout
 
 ```
-equityscope/
+Global-Stock-Analyser/
 ├── app.py                 # Flask routes
 ├── analyzer.py            # Screening, scoring, peer discovery
 ├── market_data.py         # Stooq + yfinance OHLCV/fundamentals

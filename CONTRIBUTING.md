@@ -6,8 +6,8 @@ fixes to new market integrations.
 ## Development setup
 
 ```bash
-git clone https://github.com/vikramraviprolu-code/equityscope.git
-cd equityscope
+git clone https://github.com/vikramraviprolu-code/Global-Stock-Analyser.git
+cd Global-Stock-Analyser
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 pip install ruff pytest  # dev tools

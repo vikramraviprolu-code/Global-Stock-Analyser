@@ -1,5 +1,5 @@
 [project]
-name = "equityscope"
+name = "global-stock-analyser"
 version = "0.2.0"
 description = "Free, no-API-key global equity research dashboard with value/momentum screening"
 readme = "README.md"
@@ -29,8 +29,8 @@ dependencies = [
 dev = ["ruff", "pytest"]
 
 [project.urls]
-Homepage = "https://github.com/vikramraviprolu-code/equityscope"
-Issues = "https://github.com/vikramraviprolu-code/equityscope/issues"
+Homepage = "https://github.com/vikramraviprolu-code/Global-Stock-Analyser"
+Issues = "https://github.com/vikramraviprolu-code/Global-Stock-Analyser/issues"
 
 [tool.ruff]
 line-length = 110
