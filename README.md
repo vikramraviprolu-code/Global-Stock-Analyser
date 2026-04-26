@@ -65,7 +65,7 @@ exchanges** in **14 currencies**.
 ### Install & run
 
 ```bash
-git clone https://github.com/<your-username>/equityscope.git
+git clone https://github.com/vikramraviprolu-code/equityscope.git
 cd equityscope
 pip install -r requirements.txt
 python app.py

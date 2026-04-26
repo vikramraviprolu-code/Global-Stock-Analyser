@@ -29,8 +29,8 @@ dependencies = [
 dev = ["ruff", "pytest"]
 
 [project.urls]
-Homepage = "https://github.com/your-username/equityscope"
-Issues = "https://github.com/your-username/equityscope/issues"
+Homepage = "https://github.com/vikramraviprolu-code/equityscope"
+Issues = "https://github.com/vikramraviprolu-code/equityscope/issues"
 
 [tool.ruff]
 line-length = 110

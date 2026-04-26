@@ -6,7 +6,7 @@ fixes to new market integrations.
 ## Development setup
 
 ```bash
-git clone https://github.com/<your-username>/equityscope.git
+git clone https://github.com/vikramraviprolu-code/equityscope.git
 cd equityscope
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
