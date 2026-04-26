@@ -1,0 +1,48 @@
+[project]
+name = "equityscope"
+version = "0.2.0"
+description = "Free, no-API-key global equity research dashboard with value/momentum screening"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+authors = [{ name = "EquityScope contributors" }]
+keywords = ["stocks", "equity", "research", "finance", "screener", "momentum", "value"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+
+dependencies = [
+    "flask>=3.0",
+    "pandas>=2.0",
+    "requests>=2.30",
+    "yfinance>=0.2.40",
+]
+
+[project.optional-dependencies]
+dev = ["ruff", "pytest"]
+
+[project.urls]
+Homepage = "https://github.com/your-username/equityscope"
+Issues = "https://github.com/your-username/equityscope/issues"
+
+[tool.ruff]
+line-length = 110
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["F401", "F811"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

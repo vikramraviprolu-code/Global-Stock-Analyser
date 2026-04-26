@@ -1,0 +1,180 @@
+ticker,company,sector,industry,country,region,exchange,currency
+AAPL,Apple Inc.,Technology,Consumer Electronics,USA,Americas,Nasdaq,USD
+MSFT,Microsoft Corp.,Technology,Software - Infrastructure,USA,Americas,Nasdaq,USD
+GOOGL,Alphabet Inc. Class A,Communication Services,Internet Content & Information,USA,Americas,Nasdaq,USD
+META,Meta Platforms Inc.,Communication Services,Internet Content & Information,USA,Americas,Nasdaq,USD
+AMZN,Amazon.com Inc.,Consumer Cyclical,Internet Retail,USA,Americas,Nasdaq,USD
+TSLA,Tesla Inc.,Consumer Cyclical,Auto Manufacturers,USA,Americas,Nasdaq,USD
+NVDA,NVIDIA Corp.,Technology,Semiconductors,USA,Americas,Nasdaq,USD
+AMD,Advanced Micro Devices,Technology,Semiconductors,USA,Americas,Nasdaq,USD
+INTC,Intel Corp.,Technology,Semiconductors,USA,Americas,Nasdaq,USD
+QCOM,Qualcomm Inc.,Technology,Semiconductors,USA,Americas,Nasdaq,USD
+AVGO,Broadcom Inc.,Technology,Semiconductors,USA,Americas,Nasdaq,USD
+TXN,Texas Instruments,Technology,Semiconductors,USA,Americas,Nasdaq,USD
+MU,Micron Technology,Technology,Semiconductors,USA,Americas,Nasdaq,USD
+ORCL,Oracle Corp.,Technology,Software - Infrastructure,USA,Americas,NYSE,USD
+CRM,Salesforce Inc.,Technology,Software - Application,USA,Americas,NYSE,USD
+ADBE,Adobe Inc.,Technology,Software - Application,USA,Americas,Nasdaq,USD
+NOW,ServiceNow Inc.,Technology,Software - Application,USA,Americas,NYSE,USD
+INTU,Intuit Inc.,Technology,Software - Application,USA,Americas,Nasdaq,USD
+NFLX,Netflix Inc.,Communication Services,Entertainment,USA,Americas,Nasdaq,USD
+DIS,Walt Disney Co.,Communication Services,Entertainment,USA,Americas,NYSE,USD
+JPM,JPMorgan Chase,Financial Services,Banks - Diversified,USA,Americas,NYSE,USD
+BAC,Bank of America,Financial Services,Banks - Diversified,USA,Americas,NYSE,USD
+WFC,Wells Fargo,Financial Services,Banks - Diversified,USA,Americas,NYSE,USD
+C,Citigroup Inc.,Financial Services,Banks - Diversified,USA,Americas,NYSE,USD
+GS,Goldman Sachs,Financial Services,Capital Markets,USA,Americas,NYSE,USD
+MS,Morgan Stanley,Financial Services,Capital Markets,USA,Americas,NYSE,USD
+V,Visa Inc.,Financial Services,Credit Services,USA,Americas,NYSE,USD
+MA,Mastercard Inc.,Financial Services,Credit Services,USA,Americas,NYSE,USD
+JNJ,Johnson & Johnson,Healthcare,Drug Manufacturers - General,USA,Americas,NYSE,USD
+PFE,Pfizer Inc.,Healthcare,Drug Manufacturers - General,USA,Americas,NYSE,USD
+MRK,Merck & Co.,Healthcare,Drug Manufacturers - General,USA,Americas,NYSE,USD
+LLY,Eli Lilly,Healthcare,Drug Manufacturers - General,USA,Americas,NYSE,USD
+ABBV,AbbVie Inc.,Healthcare,Drug Manufacturers - General,USA,Americas,NYSE,USD
+UNH,UnitedHealth Group,Healthcare,Healthcare Plans,USA,Americas,NYSE,USD
+XOM,Exxon Mobil,Energy,Oil & Gas Integrated,USA,Americas,NYSE,USD
+CVX,Chevron Corp.,Energy,Oil & Gas Integrated,USA,Americas,NYSE,USD
+PG,Procter & Gamble,Consumer Defensive,Household & Personal Products,USA,Americas,NYSE,USD
+KO,Coca-Cola Co.,Consumer Defensive,Beverages - Non-Alcoholic,USA,Americas,NYSE,USD
+PEP,PepsiCo Inc.,Consumer Defensive,Beverages - Non-Alcoholic,USA,Americas,Nasdaq,USD
+WMT,Walmart Inc.,Consumer Defensive,Discount Stores,USA,Americas,NYSE,USD
+COST,Costco Wholesale,Consumer Defensive,Discount Stores,USA,Americas,Nasdaq,USD
+HD,Home Depot,Consumer Cyclical,Home Improvement Retail,USA,Americas,NYSE,USD
+NKE,Nike Inc.,Consumer Cyclical,Footwear & Accessories,USA,Americas,NYSE,USD
+MCD,McDonald's Corp.,Consumer Cyclical,Restaurants,USA,Americas,NYSE,USD
+BA,Boeing Co.,Industrials,Aerospace & Defense,USA,Americas,NYSE,USD
+LMT,Lockheed Martin,Industrials,Aerospace & Defense,USA,Americas,NYSE,USD
+CAT,Caterpillar Inc.,Industrials,Farm & Heavy Construction Machinery,USA,Americas,NYSE,USD
+HON,Honeywell International,Industrials,Conglomerates,USA,Americas,Nasdaq,USD
+RELIANCE.NS,Reliance Industries,Energy,Oil & Gas Refining & Marketing,India,Asia,NSE,INR
+TCS.NS,Tata Consultancy Services,Technology,Information Technology Services,India,Asia,NSE,INR
+INFY.NS,Infosys Ltd,Technology,Information Technology Services,India,Asia,NSE,INR
+WIPRO.NS,Wipro Ltd,Technology,Information Technology Services,India,Asia,NSE,INR
+HCLTECH.NS,HCL Technologies,Technology,Information Technology Services,India,Asia,NSE,INR
+TECHM.NS,Tech Mahindra,Technology,Information Technology Services,India,Asia,NSE,INR
+HDFCBANK.NS,HDFC Bank,Financial Services,Banks - Regional,India,Asia,NSE,INR
+ICICIBANK.NS,ICICI Bank,Financial Services,Banks - Regional,India,Asia,NSE,INR
+SBIN.NS,State Bank of India,Financial Services,Banks - Regional,India,Asia,NSE,INR
+KOTAKBANK.NS,Kotak Mahindra Bank,Financial Services,Banks - Regional,India,Asia,NSE,INR
+AXISBANK.NS,Axis Bank,Financial Services,Banks - Regional,India,Asia,NSE,INR
+HINDUNILVR.NS,Hindustan Unilever,Consumer Defensive,Household & Personal Products,India,Asia,NSE,INR
+ITC.NS,ITC Ltd,Consumer Defensive,Tobacco,India,Asia,NSE,INR
+SUNPHARMA.NS,Sun Pharmaceutical,Healthcare,Drug Manufacturers - Specialty & Generic,India,Asia,NSE,INR
+DRREDDY.NS,Dr Reddy's Laboratories,Healthcare,Drug Manufacturers - Specialty & Generic,India,Asia,NSE,INR
+CIPLA.NS,Cipla Ltd,Healthcare,Drug Manufacturers - Specialty & Generic,India,Asia,NSE,INR
+TATAMOTORS.NS,Tata Motors,Consumer Cyclical,Auto Manufacturers,India,Asia,NSE,INR
+M&M.NS,Mahindra & Mahindra,Consumer Cyclical,Auto Manufacturers,India,Asia,NSE,INR
+MARUTI.NS,Maruti Suzuki India,Consumer Cyclical,Auto Manufacturers,India,Asia,NSE,INR
+BAJFINANCE.NS,Bajaj Finance,Financial Services,Credit Services,India,Asia,NSE,INR
+LT.NS,Larsen & Toubro,Industrials,Engineering & Construction,India,Asia,NSE,INR
+ASIANPAINT.NS,Asian Paints,Basic Materials,Specialty Chemicals,India,Asia,NSE,INR
+ULTRACEMCO.NS,UltraTech Cement,Basic Materials,Building Materials,India,Asia,NSE,INR
+ONGC.NS,Oil & Natural Gas Corp,Energy,Oil & Gas Integrated,India,Asia,NSE,INR
+NTPC.NS,NTPC Ltd,Utilities,Utilities - Regulated Electric,India,Asia,NSE,INR
+HSBA.L,HSBC Holdings,Financial Services,Banks - Diversified,UK,Europe,LSE,GBP
+BARC.L,Barclays plc,Financial Services,Banks - Diversified,UK,Europe,LSE,GBP
+LLOY.L,Lloyds Banking Group,Financial Services,Banks - Regional,UK,Europe,LSE,GBP
+NWG.L,NatWest Group,Financial Services,Banks - Regional,UK,Europe,LSE,GBP
+SHEL.L,Shell plc,Energy,Oil & Gas Integrated,UK,Europe,LSE,GBP
+BP.L,BP plc,Energy,Oil & Gas Integrated,UK,Europe,LSE,GBP
+AZN.L,AstraZeneca plc,Healthcare,Drug Manufacturers - General,UK,Europe,LSE,GBP
+GSK.L,GSK plc,Healthcare,Drug Manufacturers - General,UK,Europe,LSE,GBP
+ULVR.L,Unilever plc,Consumer Defensive,Household & Personal Products,UK,Europe,LSE,GBP
+DGE.L,Diageo plc,Consumer Defensive,Beverages - Wineries & Distilleries,UK,Europe,LSE,GBP
+RIO.L,Rio Tinto plc,Basic Materials,Other Industrial Metals & Mining,UK,Europe,LSE,GBP
+GLEN.L,Glencore plc,Basic Materials,Other Industrial Metals & Mining,UK,Europe,LSE,GBP
+VOD.L,Vodafone Group,Communication Services,Telecom Services,UK,Europe,LSE,GBP
+BATS.L,British American Tobacco,Consumer Defensive,Tobacco,UK,Europe,LSE,GBP
+LSEG.L,London Stock Exchange Group,Financial Services,Capital Markets,UK,Europe,LSE,GBP
+SAP.DE,SAP SE,Technology,Software - Application,Germany,Europe,Xetra,EUR
+SIE.DE,Siemens AG,Industrials,Specialty Industrial Machinery,Germany,Europe,Xetra,EUR
+ALV.DE,Allianz SE,Financial Services,Insurance - Diversified,Germany,Europe,Xetra,EUR
+DBK.DE,Deutsche Bank AG,Financial Services,Banks - Diversified,Germany,Europe,Xetra,EUR
+BAS.DE,BASF SE,Basic Materials,Chemicals,Germany,Europe,Xetra,EUR
+BAYN.DE,Bayer AG,Healthcare,Drug Manufacturers - General,Germany,Europe,Xetra,EUR
+BMW.DE,BMW AG,Consumer Cyclical,Auto Manufacturers,Germany,Europe,Xetra,EUR
+MBG.DE,Mercedes-Benz Group,Consumer Cyclical,Auto Manufacturers,Germany,Europe,Xetra,EUR
+VOW3.DE,Volkswagen AG,Consumer Cyclical,Auto Manufacturers,Germany,Europe,Xetra,EUR
+DTE.DE,Deutsche Telekom,Communication Services,Telecom Services,Germany,Europe,Xetra,EUR
+MC.PA,LVMH,Consumer Cyclical,Luxury Goods,France,Europe,Euronext Paris,EUR
+OR.PA,L'Oreal SA,Consumer Defensive,Household & Personal Products,France,Europe,Euronext Paris,EUR
+SAN.PA,Sanofi,Healthcare,Drug Manufacturers - General,France,Europe,Euronext Paris,EUR
+TTE.PA,TotalEnergies,Energy,Oil & Gas Integrated,France,Europe,Euronext Paris,EUR
+BNP.PA,BNP Paribas,Financial Services,Banks - Diversified,France,Europe,Euronext Paris,EUR
+AIR.PA,Airbus SE,Industrials,Aerospace & Defense,France,Europe,Euronext Paris,EUR
+KER.PA,Kering,Consumer Cyclical,Luxury Goods,France,Europe,Euronext Paris,EUR
+ASML.AS,ASML Holding,Technology,Semiconductor Equipment & Materials,Netherlands,Europe,Euronext Amsterdam,EUR
+PRX.AS,Prosus NV,Communication Services,Internet Content & Information,Netherlands,Europe,Euronext Amsterdam,EUR
+INGA.AS,ING Groep,Financial Services,Banks - Diversified,Netherlands,Europe,Euronext Amsterdam,EUR
+NESN.SW,Nestle SA,Consumer Defensive,Packaged Foods,Switzerland,Europe,SIX Swiss,CHF
+ROG.SW,Roche Holding,Healthcare,Drug Manufacturers - General,Switzerland,Europe,SIX Swiss,CHF
+NOVN.SW,Novartis AG,Healthcare,Drug Manufacturers - General,Switzerland,Europe,SIX Swiss,CHF
+UBSG.SW,UBS Group,Financial Services,Banks - Diversified,Switzerland,Europe,SIX Swiss,CHF
+ENI.MI,Eni SpA,Energy,Oil & Gas Integrated,Italy,Europe,Borsa Italiana,EUR
+ISP.MI,Intesa Sanpaolo,Financial Services,Banks - Diversified,Italy,Europe,Borsa Italiana,EUR
+UCG.MI,UniCredit SpA,Financial Services,Banks - Diversified,Italy,Europe,Borsa Italiana,EUR
+ITX.MC,Inditex,Consumer Cyclical,Apparel Retail,Spain,Europe,Bolsa de Madrid,EUR
+SAN.MC,Banco Santander,Financial Services,Banks - Diversified,Spain,Europe,Bolsa de Madrid,EUR
+IBE.MC,Iberdrola SA,Utilities,Utilities - Diversified,Spain,Europe,Bolsa de Madrid,EUR
+VOLV-B.ST,Volvo AB,Industrials,Farm & Heavy Construction Machinery,Sweden,Europe,Nasdaq Stockholm,SEK
+ERIC-B.ST,Ericsson,Technology,Communication Equipment,Sweden,Europe,Nasdaq Stockholm,SEK
+ATCO-A.ST,Atlas Copco,Industrials,Specialty Industrial Machinery,Sweden,Europe,Nasdaq Stockholm,SEK
+NOKIA.HE,Nokia Oyj,Technology,Communication Equipment,Finland,Europe,Nasdaq Helsinki,EUR
+NDA-FI.HE,Nordea Bank,Financial Services,Banks - Diversified,Finland,Europe,Nasdaq Helsinki,EUR
+NOVO-B.CO,Novo Nordisk,Healthcare,Biotechnology,Denmark,Europe,Nasdaq Copenhagen,DKK
+DSV.CO,DSV A/S,Industrials,Integrated Freight & Logistics,Denmark,Europe,Nasdaq Copenhagen,DKK
+EQNR.OL,Equinor ASA,Energy,Oil & Gas Integrated,Norway,Europe,Oslo Bors,NOK
+DNB.OL,DNB Bank,Financial Services,Banks - Regional,Norway,Europe,Oslo Bors,NOK
+7203.T,Toyota Motor,Consumer Cyclical,Auto Manufacturers,Japan,Asia,TSE,JPY
+7267.T,Honda Motor,Consumer Cyclical,Auto Manufacturers,Japan,Asia,TSE,JPY
+7201.T,Nissan Motor,Consumer Cyclical,Auto Manufacturers,Japan,Asia,TSE,JPY
+6758.T,Sony Group,Technology,Consumer Electronics,Japan,Asia,TSE,JPY
+6501.T,Hitachi Ltd,Industrials,Conglomerates,Japan,Asia,TSE,JPY
+6502.T,Toshiba Corp,Industrials,Conglomerates,Japan,Asia,TSE,JPY
+6861.T,Keyence Corp,Technology,Electronic Components,Japan,Asia,TSE,JPY
+8035.T,Tokyo Electron,Technology,Semiconductor Equipment & Materials,Japan,Asia,TSE,JPY
+9984.T,SoftBank Group,Communication Services,Telecom Services,Japan,Asia,TSE,JPY
+9432.T,Nippon Telegraph & Telephone,Communication Services,Telecom Services,Japan,Asia,TSE,JPY
+8306.T,Mitsubishi UFJ Financial,Financial Services,Banks - Diversified,Japan,Asia,TSE,JPY
+8316.T,Sumitomo Mitsui Financial,Financial Services,Banks - Diversified,Japan,Asia,TSE,JPY
+4502.T,Takeda Pharmaceutical,Healthcare,Drug Manufacturers - General,Japan,Asia,TSE,JPY
+0700.HK,Tencent Holdings,Communication Services,Internet Content & Information,Hong Kong,Asia,HKEX,HKD
+9988.HK,Alibaba Group,Consumer Cyclical,Internet Retail,Hong Kong,Asia,HKEX,HKD
+3690.HK,Meituan,Consumer Cyclical,Internet Retail,Hong Kong,Asia,HKEX,HKD
+1810.HK,Xiaomi Corp,Technology,Consumer Electronics,Hong Kong,Asia,HKEX,HKD
+0941.HK,China Mobile,Communication Services,Telecom Services,Hong Kong,Asia,HKEX,HKD
+1398.HK,ICBC,Financial Services,Banks - Diversified,Hong Kong,Asia,HKEX,HKD
+0939.HK,China Construction Bank,Financial Services,Banks - Diversified,Hong Kong,Asia,HKEX,HKD
+2318.HK,Ping An Insurance,Financial Services,Insurance - Life,Hong Kong,Asia,HKEX,HKD
+0005.HK,HSBC Holdings (HK),Financial Services,Banks - Diversified,Hong Kong,Asia,HKEX,HKD
+1299.HK,AIA Group,Financial Services,Insurance - Life,Hong Kong,Asia,HKEX,HKD
+005930.KS,Samsung Electronics,Technology,Consumer Electronics,South Korea,Asia,KOSPI,KRW
+000660.KS,SK Hynix,Technology,Semiconductors,South Korea,Asia,KOSPI,KRW
+035420.KS,NAVER Corp,Communication Services,Internet Content & Information,South Korea,Asia,KOSPI,KRW
+035720.KS,Kakao Corp,Communication Services,Internet Content & Information,South Korea,Asia,KOSPI,KRW
+005380.KS,Hyundai Motor,Consumer Cyclical,Auto Manufacturers,South Korea,Asia,KOSPI,KRW
+051910.KS,LG Chem,Basic Materials,Specialty Chemicals,South Korea,Asia,KOSPI,KRW
+2330.TW,Taiwan Semiconductor (TSMC),Technology,Semiconductors,Taiwan,Asia,TWSE,TWD
+2317.TW,Hon Hai Precision (Foxconn),Technology,Electronic Components,Taiwan,Asia,TWSE,TWD
+2454.TW,MediaTek Inc,Technology,Semiconductors,Taiwan,Asia,TWSE,TWD
+2412.TW,Chunghwa Telecom,Communication Services,Telecom Services,Taiwan,Asia,TWSE,TWD
+D05.SI,DBS Group Holdings,Financial Services,Banks - Diversified,Singapore,Asia,SGX,SGD
+O39.SI,OCBC Bank,Financial Services,Banks - Diversified,Singapore,Asia,SGX,SGD
+U11.SI,United Overseas Bank,Financial Services,Banks - Diversified,Singapore,Asia,SGX,SGD
+Z74.SI,Singtel,Communication Services,Telecom Services,Singapore,Asia,SGX,SGD
+C6L.SI,Singapore Airlines,Industrials,Airlines,Singapore,Asia,SGX,SGD
+BHP.AX,BHP Group,Basic Materials,Other Industrial Metals & Mining,Australia,Asia-Pacific,ASX,AUD
+RIO.AX,Rio Tinto Ltd,Basic Materials,Other Industrial Metals & Mining,Australia,Asia-Pacific,ASX,AUD
+CBA.AX,Commonwealth Bank,Financial Services,Banks - Diversified,Australia,Asia-Pacific,ASX,AUD
+NAB.AX,National Australia Bank,Financial Services,Banks - Diversified,Australia,Asia-Pacific,ASX,AUD
+WBC.AX,Westpac Banking Corp,Financial Services,Banks - Diversified,Australia,Asia-Pacific,ASX,AUD
+ANZ.AX,ANZ Group,Financial Services,Banks - Diversified,Australia,Asia-Pacific,ASX,AUD
+CSL.AX,CSL Limited,Healthcare,Biotechnology,Australia,Asia-Pacific,ASX,AUD
+WES.AX,Wesfarmers Ltd,Consumer Cyclical,Specialty Retail,Australia,Asia-Pacific,ASX,AUD
+WOW.AX,Woolworths Group,Consumer Defensive,Grocery Stores,Australia,Asia-Pacific,ASX,AUD
+601318.SS,Ping An Insurance (A),Financial Services,Insurance - Life,China,Asia,Shanghai SE,CNY
+600519.SS,Kweichow Moutai,Consumer Defensive,Beverages - Wineries & Distilleries,China,Asia,Shanghai SE,CNY
+601398.SS,ICBC (A),Financial Services,Banks - Diversified,China,Asia,Shanghai SE,CNY
+000858.SZ,Wuliangye Yibin,Consumer Defensive,Beverages - Wineries & Distilleries,China,Asia,Shenzhen SE,CNY
+000333.SZ,Midea Group,Consumer Cyclical,Furnishings Fixtures & Appliances,China,Asia,Shenzhen SE,CNY

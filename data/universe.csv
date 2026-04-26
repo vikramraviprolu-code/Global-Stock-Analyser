@@ -1,0 +1,126 @@
+ticker,company,sector,industry
+AAPL,Apple Inc.,Technology,Consumer Electronics
+MSFT,Microsoft Corp.,Technology,Software - Infrastructure
+GOOGL,Alphabet Inc. Class A,Communication Services,Internet Content & Information
+GOOG,Alphabet Inc. Class C,Communication Services,Internet Content & Information
+META,Meta Platforms Inc.,Communication Services,Internet Content & Information
+AMZN,Amazon.com Inc.,Consumer Cyclical,Internet Retail
+TSLA,Tesla Inc.,Consumer Cyclical,Auto Manufacturers
+NVDA,NVIDIA Corp.,Technology,Semiconductors
+AMD,Advanced Micro Devices,Technology,Semiconductors
+INTC,Intel Corp.,Technology,Semiconductors
+QCOM,Qualcomm Inc.,Technology,Semiconductors
+AVGO,Broadcom Inc.,Technology,Semiconductors
+TXN,Texas Instruments,Technology,Semiconductors
+MU,Micron Technology,Technology,Semiconductors
+ORCL,Oracle Corp.,Technology,Software - Infrastructure
+CRM,Salesforce Inc.,Technology,Software - Application
+ADBE,Adobe Inc.,Technology,Software - Application
+NOW,ServiceNow Inc.,Technology,Software - Application
+INTU,Intuit Inc.,Technology,Software - Application
+IBM,IBM Corp.,Technology,Information Technology Services
+ACN,Accenture plc,Technology,Information Technology Services
+CSCO,Cisco Systems,Technology,Communication Equipment
+NFLX,Netflix Inc.,Communication Services,Entertainment
+DIS,Walt Disney Co.,Communication Services,Entertainment
+CMCSA,Comcast Corp.,Communication Services,Telecom Services
+T,AT&T Inc.,Communication Services,Telecom Services
+VZ,Verizon Communications,Communication Services,Telecom Services
+TMUS,T-Mobile US Inc.,Communication Services,Telecom Services
+JPM,JPMorgan Chase,Financial Services,Banks - Diversified
+BAC,Bank of America,Financial Services,Banks - Diversified
+WFC,Wells Fargo,Financial Services,Banks - Diversified
+C,Citigroup Inc.,Financial Services,Banks - Diversified
+GS,Goldman Sachs,Financial Services,Capital Markets
+MS,Morgan Stanley,Financial Services,Capital Markets
+BLK,BlackRock Inc.,Financial Services,Asset Management
+SCHW,Charles Schwab,Financial Services,Capital Markets
+AXP,American Express,Financial Services,Credit Services
+V,Visa Inc.,Financial Services,Credit Services
+MA,Mastercard Inc.,Financial Services,Credit Services
+PYPL,PayPal Holdings,Financial Services,Credit Services
+JNJ,Johnson & Johnson,Healthcare,Drug Manufacturers - General
+PFE,Pfizer Inc.,Healthcare,Drug Manufacturers - General
+MRK,Merck & Co.,Healthcare,Drug Manufacturers - General
+ABBV,AbbVie Inc.,Healthcare,Drug Manufacturers - General
+LLY,Eli Lilly,Healthcare,Drug Manufacturers - General
+BMY,Bristol-Myers Squibb,Healthcare,Drug Manufacturers - General
+AMGN,Amgen Inc.,Healthcare,Drug Manufacturers - General
+GILD,Gilead Sciences,Healthcare,Drug Manufacturers - General
+UNH,UnitedHealth Group,Healthcare,Healthcare Plans
+CVS,CVS Health,Healthcare,Healthcare Plans
+CI,Cigna Group,Healthcare,Healthcare Plans
+HUM,Humana Inc.,Healthcare,Healthcare Plans
+ELV,Elevance Health,Healthcare,Healthcare Plans
+TMO,Thermo Fisher Scientific,Healthcare,Diagnostics & Research
+DHR,Danaher Corp.,Healthcare,Diagnostics & Research
+ABT,Abbott Laboratories,Healthcare,Medical Devices
+MDT,Medtronic plc,Healthcare,Medical Devices
+ISRG,Intuitive Surgical,Healthcare,Medical Devices
+SYK,Stryker Corp.,Healthcare,Medical Devices
+XOM,Exxon Mobil,Energy,Oil & Gas Integrated
+CVX,Chevron Corp.,Energy,Oil & Gas Integrated
+COP,ConocoPhillips,Energy,Oil & Gas E&P
+EOG,EOG Resources,Energy,Oil & Gas E&P
+SLB,Schlumberger,Energy,Oil & Gas Equipment & Services
+PSX,Phillips 66,Energy,Oil & Gas Refining & Marketing
+MPC,Marathon Petroleum,Energy,Oil & Gas Refining & Marketing
+VLO,Valero Energy,Energy,Oil & Gas Refining & Marketing
+OXY,Occidental Petroleum,Energy,Oil & Gas E&P
+PG,Procter & Gamble,Consumer Defensive,Household & Personal Products
+KO,Coca-Cola Co.,Consumer Defensive,Beverages - Non-Alcoholic
+PEP,PepsiCo Inc.,Consumer Defensive,Beverages - Non-Alcoholic
+WMT,Walmart Inc.,Consumer Defensive,Discount Stores
+COST,Costco Wholesale,Consumer Defensive,Discount Stores
+TGT,Target Corp.,Consumer Defensive,Discount Stores
+MDLZ,Mondelez International,Consumer Defensive,Confectioners
+PM,Philip Morris,Consumer Defensive,Tobacco
+MO,Altria Group,Consumer Defensive,Tobacco
+CL,Colgate-Palmolive,Consumer Defensive,Household & Personal Products
+HD,Home Depot,Consumer Cyclical,Home Improvement Retail
+LOW,Lowe's Companies,Consumer Cyclical,Home Improvement Retail
+NKE,Nike Inc.,Consumer Cyclical,Footwear & Accessories
+MCD,McDonald's Corp.,Consumer Cyclical,Restaurants
+SBUX,Starbucks Corp.,Consumer Cyclical,Restaurants
+F,Ford Motor Co.,Consumer Cyclical,Auto Manufacturers
+GM,General Motors,Consumer Cyclical,Auto Manufacturers
+BA,Boeing Co.,Industrials,Aerospace & Defense
+LMT,Lockheed Martin,Industrials,Aerospace & Defense
+RTX,RTX Corp.,Industrials,Aerospace & Defense
+NOC,Northrop Grumman,Industrials,Aerospace & Defense
+GD,General Dynamics,Industrials,Aerospace & Defense
+GE,GE Aerospace,Industrials,Aerospace & Defense
+CAT,Caterpillar Inc.,Industrials,Farm & Heavy Construction Machinery
+DE,Deere & Co.,Industrials,Farm & Heavy Construction Machinery
+HON,Honeywell International,Industrials,Conglomerates
+MMM,3M Co.,Industrials,Conglomerates
+UPS,United Parcel Service,Industrials,Integrated Freight & Logistics
+FDX,FedEx Corp.,Industrials,Integrated Freight & Logistics
+UNP,Union Pacific,Industrials,Railroads
+CSX,CSX Corp.,Industrials,Railroads
+NSC,Norfolk Southern,Industrials,Railroads
+LIN,Linde plc,Basic Materials,Specialty Chemicals
+APD,Air Products and Chemicals,Basic Materials,Specialty Chemicals
+SHW,Sherwin-Williams,Basic Materials,Specialty Chemicals
+ECL,Ecolab Inc.,Basic Materials,Specialty Chemicals
+NEM,Newmont Corp.,Basic Materials,Gold
+FCX,Freeport-McMoRan,Basic Materials,Copper
+NUE,Nucor Corp.,Basic Materials,Steel
+DOW,Dow Inc.,Basic Materials,Chemicals
+DD,DuPont de Nemours,Basic Materials,Specialty Chemicals
+NEE,NextEra Energy,Utilities,Utilities - Regulated Electric
+DUK,Duke Energy,Utilities,Utilities - Regulated Electric
+SO,Southern Co.,Utilities,Utilities - Regulated Electric
+D,Dominion Energy,Utilities,Utilities - Regulated Electric
+AEP,American Electric Power,Utilities,Utilities - Regulated Electric
+EXC,Exelon Corp.,Utilities,Utilities - Regulated Electric
+SRE,Sempra,Utilities,Utilities - Diversified
+PCG,PG&E Corp.,Utilities,Utilities - Regulated Electric
+PLD,Prologis Inc.,Real Estate,REIT - Industrial
+AMT,American Tower,Real Estate,REIT - Specialty
+EQIX,Equinix Inc.,Real Estate,REIT - Specialty
+CCI,Crown Castle,Real Estate,REIT - Specialty
+PSA,Public Storage,Real Estate,REIT - Industrial
+SPG,Simon Property Group,Real Estate,REIT - Retail
+O,Realty Income,Real Estate,REIT - Retail
+WELL,Welltower Inc.,Real Estate,REIT - Healthcare

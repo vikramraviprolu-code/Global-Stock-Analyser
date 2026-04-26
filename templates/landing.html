@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Equity Research Dashboard — Free Stock Analysis</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='landing.css') }}">
+</head>
+<body>
+
+<nav class="lp-nav">
+  <div class="lp-nav-inner">
+    <div class="lp-brand">
+      <span class="lp-logo">▲</span>
+      <span>EquityScope</span>
+    </div>
+    <div class="lp-nav-links">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#scoring">Scoring</a>
+      <a href="#data">Data</a>
+      <a href="/app" class="lp-cta-small">Launch App →</a>
+    </div>
+  </div>
+</nav>
+
+<section class="lp-hero">
+  <div class="lp-hero-inner">
+    <div class="lp-pill-tag">Free · No API key · Global coverage · USA · Europe · Asia-Pacific</div>
+    <h1>Global stock research<br><span class="lp-grad">in one ticker or company name.</span></h1>
+    <p class="lp-sub">
+      Type a US ticker, an Indian ISIN, a Tokyo code, or a company name like "Toyota" or "BMW".
+      Get a value screen, momentum scan, peer comps in local currency (with USD overlay), and a
+      transparent Buy / Watch / Avoid recommendation. No black boxes. No fabricated data.
+    </p>
+    <form class="lp-search" action="/app" method="get">
+      <input name="ticker" type="text" placeholder="AAPL · Reliance · Toyota · BMW.DE · 7203.T · TSMC…" autocomplete="off" />
+      <button type="submit">Analyze →</button>
+    </form>
+    <div class="lp-hero-stats">
+      <div><strong>23+</strong><span>exchanges</span></div>
+      <div><strong>14</strong><span>currencies</span></div>
+      <div><strong>14</strong><span>indicators</span></div>
+      <div><strong>0</strong><span>API keys</span></div>
+    </div>
+    <div class="lp-markets-strip">
+      🇺🇸 NYSE/Nasdaq · 🇮🇳 NSE/BSE · 🇬🇧 LSE · 🇩🇪 Xetra · 🇫🇷 Euronext · 🇨🇭 SIX
+      · 🇮🇹 Borsa Italiana · 🇪🇸 BME · 🇸🇪 Nasdaq Nordic · 🇯🇵 TSE · 🇭🇰 HKEX
+      · 🇰🇷 KOSPI · 🇹🇼 TWSE · 🇸🇬 SGX · 🇦🇺 ASX · 🇨🇳 SSE/SZSE
+    </div>
+  </div>
+  <div class="lp-hero-bg"></div>
+</section>
+
+<section id="features" class="lp-section">
+  <h2 class="lp-h2">Five modules. One ticker.</h2>
+  <p class="lp-section-sub">Every analysis returns a structured equity research dashboard.</p>
+  <div class="lp-grid-3">
+    <div class="lp-card">
+      <div class="lp-card-icon">📊</div>
+      <h3>Overview</h3>
+      <p>Price, 52W range, MAs (20/50/200), RSI, ROC, market cap, P/E, sector, industry — global filter pass/fail at a glance.</p>
+    </div>
+    <div class="lp-card">
+      <div class="lp-card-icon">💎</div>
+      <h3>Value Screen</h3>
+      <p>Peer companies trading within 10% of 52W low <em>and</em> trailing P/E ≤ 10. Sorted by proximity to floor.</p>
+    </div>
+    <div class="lp-card">
+      <div class="lp-card-icon">🚀</div>
+      <h3>Momentum</h3>
+      <p>Top 10 peers ranked by 5-day performance with RSI/ROC, MA position, signal classification, outlook, and confidence.</p>
+    </div>
+    <div class="lp-card">
+      <div class="lp-card-icon">🎯</div>
+      <h3>Cross-Analysis</h3>
+      <p>The high-conviction overlap: stocks appearing in <em>both</em> value and momentum screens — a re-rating signal.</p>
+    </div>
+    <div class="lp-card">
+      <div class="lp-card-icon">📝</div>
+      <h3>Recommendation</h3>
+      <p>Bull/bear/base case, catalysts, fundamental + technical risks, transparent score, time horizon, Buy/Watch/Avoid.</p>
+    </div>
+    <div class="lp-card">
+      <div class="lp-card-icon">🛡️</div>
+      <h3>No fabrication</h3>
+      <p>Missing data renders as "Data unavailable". Freshness labeled (Real-time / Delayed / Previous close / Historical).</p>
+    </div>
+    <div class="lp-card">
+      <div class="lp-card-icon">🌍</div>
+      <h3>Global markets</h3>
+      <p>23+ exchanges across the US, Europe, India, Japan, Hong Kong, Korea, Taiwan, Singapore, Australia, China.</p>
+    </div>
+    <div class="lp-card">
+      <div class="lp-card-icon">💱</div>
+      <h3>Local + USD</h3>
+      <p>Prices in local currency. Market caps shown in local + USD. Cross-market peer caps normalized via live FX.</p>
+    </div>
+    <div class="lp-card">
+      <div class="lp-card-icon">🔍</div>
+      <h3>Smart search</h3>
+      <p>Type a ticker (AAPL, BMW.DE, 7203.T) or a name ("Reliance", "Toyota"). Ambiguous matches prompt a listing picker.</p>
+    </div>
+  </div>
+</section>
+
+<section class="lp-section lp-section-alt">
+  <h2 class="lp-h2">Region-aware filters</h2>
+  <p class="lp-section-sub">Different markets, different liquidity. Each region has its own thresholds — applied automatically.</p>
+  <div class="lp-region-grid">
+    <div class="lp-region-card">🇺🇸 <strong>USA</strong> · price ≥ $5 · vol ≥ 500K · mcap ≥ $2B</div>
+    <div class="lp-region-card">🇮🇳 <strong>India</strong> · price ≥ ₹100 · vol ≥ 500K · mcap ≥ $2B</div>
+    <div class="lp-region-card">🇪🇺 <strong>Europe</strong> · price ≥ €/£/Fr 5 · vol ≥ 100K · mcap ≥ $2B</div>
+    <div class="lp-region-card">🇯🇵 <strong>Japan</strong> · price ≥ ¥500 · vol ≥ 300K · mcap ≥ $2B</div>
+    <div class="lp-region-card">🇭🇰 <strong>Hong Kong</strong> · price ≥ HK$5 · vol ≥ 500K · mcap ≥ $2B</div>
+    <div class="lp-region-card">🇰🇷 <strong>South Korea</strong> · price ≥ ₩5,000 · vol ≥ 100K · mcap ≥ $2B</div>
+    <div class="lp-region-card">🇹🇼 <strong>Taiwan</strong> · price ≥ NT$50 · vol ≥ 100K · mcap ≥ $2B</div>
+    <div class="lp-region-card">🇦🇺 <strong>Australia</strong> · price ≥ A$2 · vol ≥ 100K · mcap ≥ $2B</div>
+    <div class="lp-region-card">🇸🇬 <strong>Singapore</strong> · price ≥ S$1 · vol ≥ 100K · mcap ≥ $1B</div>
+    <div class="lp-region-card">🇨🇳 <strong>China A-shares</strong> · price ≥ ¥5 · vol ≥ 500K · mcap ≥ $2B</div>
+  </div>
+</section>
+
+<section class="lp-section">
+  <h2 class="lp-h2">Tiered peer matching</h2>
+  <p class="lp-section-sub">Peers found through a 6-step fallback so every stock gets a comparable cohort.</p>
+  <div class="lp-tier-list">
+    <div class="lp-tier"><span class="lp-tier-num">1</span> Same <strong>industry + country</strong> — closest comp</div>
+    <div class="lp-tier"><span class="lp-tier-num">2</span> Same <strong>industry + region</strong> — regional peers</div>
+    <div class="lp-tier"><span class="lp-tier-num">3</span> Same <strong>sector + country</strong> — domestic sector</div>
+    <div class="lp-tier"><span class="lp-tier-num">4</span> Same <strong>sector + region</strong> — regional sector</div>
+    <div class="lp-tier"><span class="lp-tier-num">5</span> <strong>Global same-industry</strong> — worldwide comp</div>
+    <div class="lp-tier"><span class="lp-tier-num">6</span> <strong>Global sector</strong> — final fallback</div>
+  </div>
+</section>
+
+<section id="how" class="lp-section lp-section-alt">
+  <h2 class="lp-h2">How it works</h2>
+  <div class="lp-steps">
+    <div class="lp-step">
+      <div class="lp-step-num">1</div>
+      <h3>Enter a ticker</h3>
+      <p>Type any US-listed symbol. Hit Analyze.</p>
+    </div>
+    <div class="lp-step">
+      <div class="lp-step-num">2</div>
+      <h3>We pull free data</h3>
+      <p>Stooq CSV → yfinance fallback for OHLCV. yfinance for fundamentals. No keys, no scraping.</p>
+    </div>
+    <div class="lp-step">
+      <div class="lp-step-num">3</div>
+      <h3>Indicators computed locally</h3>
+      <p>52W high/low, 5D perf, MAs, RSI-14, ROC-14/21, avg volume — calculated server-side from raw bars.</p>
+    </div>
+    <div class="lp-step">
+      <div class="lp-step-num">4</div>
+      <h3>Peers screened</h3>
+      <p>Same sector/industry from curated universe. Global filters: price ≥ $5, vol ≥ 500K, mcap ≥ $2B.</p>
+    </div>
+    <div class="lp-step">
+      <div class="lp-step-num">5</div>
+      <h3>Score + recommendation</h3>
+      <p>Transparent +1/-1 rules across value, momentum, and risk penalties. Final call: Buy / Watch / Avoid.</p>
+    </div>
+  </div>
+</section>
+
+<section id="scoring" class="lp-section">
+  <h2 class="lp-h2">Transparent scoring — see every point</h2>
+  <p class="lp-section-sub">No black-box rating. Every increment is visible in the Recommendation tab.</p>
+  <div class="lp-score-grid">
+    <div class="lp-score-card lp-score-value">
+      <h3>Value Score <span>/4</span></h3>
+      <ul>
+        <li><span class="lp-plus">+1</span> within 10% of 52W low</li>
+        <li><span class="lp-plus">+1</span> trailing P/E ≤ 10</li>
+        <li><span class="lp-plus">+1</span> market cap ≥ $2B</li>
+        <li><span class="lp-plus">+1</span> attractive vs peer median P/E</li>
+      </ul>
+    </div>
+    <div class="lp-score-card lp-score-mom">
+      <h3>Momentum Score <span>/7</span></h3>
+      <ul>
+        <li><span class="lp-plus">+1</span> 5D positive</li>
+        <li><span class="lp-plus">+1</span> ROC 14D positive</li>
+        <li><span class="lp-plus">+1</span> ROC 21D positive</li>
+        <li><span class="lp-plus">+1</span> RSI between 40 and 70</li>
+        <li><span class="lp-plus">+1</span> price above 20D MA</li>
+        <li><span class="lp-plus">+1</span> price above 50D MA</li>
+        <li><span class="lp-plus">+1</span> price above 200D MA</li>
+      </ul>
+    </div>
+    <div class="lp-score-card lp-score-pen">
+      <h3>Risk Penalties</h3>
+      <ul>
+        <li><span class="lp-minus">-1</span> RSI &gt; 70 (overbought)</li>
+        <li><span class="lp-minus">-1</span> price below 200D MA</li>
+        <li><span class="lp-minus">-1</span> ROC 14D &amp; 21D both negative</li>
+        <li><span class="lp-minus">↓</span> confidence reduced if data missing</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="data" class="lp-section lp-section-alt">
+  <h2 class="lp-h2">Free data, no API keys</h2>
+  <div class="lp-data-grid">
+    <div class="lp-data-card">
+      <h3>Price &amp; volume</h3>
+      <p class="lp-source">Stooq CSV → yfinance fallback</p>
+      <ul>
+        <li>Daily OHLCV bars</li>
+        <li>2 years of history</li>
+        <li>30-min in-memory cache</li>
+      </ul>
+    </div>
+    <div class="lp-data-card">
+      <h3>Fundamentals</h3>
+      <p class="lp-source">yfinance (best effort)</p>
+      <ul>
+        <li>Market cap</li>
+        <li>Trailing P/E</li>
+        <li>Sector &amp; industry</li>
+      </ul>
+    </div>
+    <div class="lp-data-card">
+      <h3>Peer universe</h3>
+      <p class="lp-source">Local curated CSV</p>
+      <ul>
+        <li>120+ S&amp;P-style tickers</li>
+        <li>Sector + industry tagged</li>
+        <li>ETFs/funds/warrants excluded</li>
+      </ul>
+    </div>
+  </div>
+  <div class="lp-disclaimer-box">
+    <strong>⚠️ Data disclaimer.</strong> Free sources may be delayed, incomplete, or unavailable.
+    Missing values shown as "Data unavailable" — never fabricated. Freshness labeled on every analysis.
+  </div>
+</section>
+
+<section class="lp-cta-section">
+  <h2>Run your first analysis.</h2>
+  <p>Free. No signup. No keys. Just a ticker.</p>
+  <form class="lp-search lp-search-cta" action="/app" method="get">
+    <input name="ticker" type="text" placeholder="AAPL" autocomplete="off" />
+    <button type="submit">Analyze →</button>
+  </form>
+</section>
+
+<footer class="lp-footer">
+  <div class="lp-footer-inner">
+    <div>
+      <div class="lp-brand"><span class="lp-logo">▲</span><span>EquityScope</span></div>
+      <p class="lp-foot-tag">Free, transparent equity research for retail investors.</p>
+    </div>
+    <div class="lp-foot-disc">
+      This tool is for informational purposes only and is not financial advice. Investors should
+      conduct their own research or consult a qualified financial advisor before making investment
+      decisions. No warranty on data accuracy or completeness.
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

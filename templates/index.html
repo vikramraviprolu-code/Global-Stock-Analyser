@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Global Equity Research Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container">
+  <header>
+    <div>
+      <a href="/" style="text-decoration: none; color: inherit;">
+        <h1>▲ EquityScope <span style="font-weight: 400; color: var(--muted); font-size: 14px;">Global Dashboard</span></h1>
+      </a>
+      <div class="sub">USA · India · Europe · Japan · Hong Kong · Korea · Taiwan · Singapore · Australia · China</div>
+    </div>
+    <div class="sub" id="freshness-header"></div>
+  </header>
+
+  <div class="search-box" style="position: relative;">
+    <input id="query" type="text" placeholder="Enter ticker or company (e.g. AAPL, Reliance, Toyota, BMW.DE, 7203.T)" autofocus autocomplete="off" />
+    <button id="analyze-btn">Analyze</button>
+    <div id="autocomplete" class="autocomplete hidden"></div>
+  </div>
+
+  <div id="error-box" class="error hidden"></div>
+  <div id="loading" class="loading hidden">
+    <div class="spinner"></div>
+    <div style="margin-top: 12px;">Fetching global market data, computing indicators, screening peers…</div>
+  </div>
+
+  <div id="disambig-modal" class="modal hidden">
+    <div class="modal-inner">
+      <h2>Multiple matches — pick a listing</h2>
+      <p class="muted">The same name or ticker exists on more than one exchange. Choose which listing to analyze.</p>
+      <div id="disambig-list"></div>
+      <button id="disambig-cancel" class="btn-ghost">Cancel</button>
+    </div>
+  </div>
+
+  <div id="results" class="hidden">
+    <div class="tabs">
+      <div class="tab active" data-tab="overview">Overview</div>
+      <div class="tab" data-tab="value">Value Screen</div>
+      <div class="tab" data-tab="momentum">Momentum</div>
+      <div class="tab" data-tab="cross">Cross-Analysis</div>
+      <div class="tab" data-tab="recommendation">Recommendation</div>
+    </div>
+
+    <div id="overview" class="section active"></div>
+    <div id="value" class="section"></div>
+    <div id="momentum" class="section"></div>
+    <div id="cross" class="section"></div>
+    <div id="recommendation" class="section"></div>
+
+    <div class="disclaimer">
+      <strong>Data disclaimer:</strong> Free data sources. Prices in local currency unless noted.
+      FX rates fetched intraday and may be delayed. Fundamentals (market cap, P/E) via yfinance — best effort.
+      Missing values shown as "Data unavailable" — never fabricated.
+    </div>
+    <div class="disclaimer" style="border-left-color: var(--accent);">
+      This analysis is for informational purposes only and is not financial advice. Investors
+      should conduct their own research or consult a qualified financial advisor before making
+      investment decisions.
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmtNum = (n, dec = 2) => (n == null ? "—" : Number(n).toFixed(dec));
+const fmtPct = (n, dec = 2) => (n == null ? "—" : (n >= 0 ? "+" : "") + Number(n).toFixed(dec) + "%");
+const fmtVol = (n) => {
+  if (n == null) return "—";
+  if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
+  if (n >= 1e3) return (n / 1e3).toFixed(0) + "K";
+  return Number(n).toFixed(0);
+};
+const cls = (n) => (n == null ? "muted" : n > 0 ? "green" : n < 0 ? "red" : "muted");
+const arrow = (n) => (n == null ? "→" : n > 0 ? "↑" : n < 0 ? "↓" : "→");
+
+const fmtPrice = (n, sym, ccy) => {
+  if (n == null) return "—";
+  const noDecimal = ["JPY", "KRW", "TWD", "INR", "HKD"].includes(ccy);
+  const v = Number(n);
+  return (sym || "") + (noDecimal ? Math.round(v).toLocaleString() : v.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+};
+
+const fmtMcap = (n, sym) => {
+  if (n == null) return "—";
+  sym = sym || "";
+  if (n >= 1e12) return sym + (n / 1e12).toFixed(2) + "T";
+  if (n >= 1e9) return sym + (n / 1e9).toFixed(2) + "B";
+  if (n >= 1e6) return sym + (n / 1e6).toFixed(1) + "M";
+  return sym + Number(n).toFixed(0);
+};
+
+const fmtMcapBoth = (local, usd, sym) => {
+  if (local == null) return "—";
+  let s = fmtMcap(local, sym);
+  if (usd != null && sym !== "$") s += ` (${fmtMcap(usd, "$")})`;
+  return s;
+};
+
+const flagOf = (country) => ({
+  "USA": "🇺🇸", "India": "🇮🇳", "UK": "🇬🇧", "Germany": "🇩🇪", "France": "🇫🇷",
+  "Netherlands": "🇳🇱", "Belgium": "🇧🇪", "Portugal": "🇵🇹", "Switzerland": "🇨🇭",
+  "Italy": "🇮🇹", "Spain": "🇪🇸", "Sweden": "🇸🇪", "Finland": "🇫🇮", "Denmark": "🇩🇰",
+  "Norway": "🇳🇴", "Japan": "🇯🇵", "Hong Kong": "🇭🇰", "South Korea": "🇰🇷",
+  "Taiwan": "🇹🇼", "Singapore": "🇸🇬", "Australia": "🇦🇺", "China": "🇨🇳", "Canada": "🇨🇦",
+}[country] || "🌐");
+
+document.querySelectorAll(".tab").forEach((t) => {
+  t.onclick = () => {
+    document.querySelectorAll(".tab").forEach((x) => x.classList.remove("active"));
+    document.querySelectorAll(".section").forEach((x) => x.classList.remove("active"));
+    t.classList.add("active");
+    $(t.dataset.tab).classList.add("active");
+  };
+});
+
+$("analyze-btn").onclick = handleAnalyze;
+$("query").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { hideAutocomplete(); handleAnalyze(); }
+  if (e.key === "Escape") hideAutocomplete();
+});
+
+let acTimer;
+$("query").addEventListener("input", () => {
+  clearTimeout(acTimer);
+  const q = $("query").value.trim();
+  if (q.length < 2) { hideAutocomplete(); return; }
+  acTimer = setTimeout(() => doAutocomplete(q), 250);
+});
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".search-box")) hideAutocomplete();
+});
+
+async function doAutocomplete(q) {
+  try {
+    const res = await fetch("/api/search?q=" + encodeURIComponent(q));
+    const data = await res.json();
+    if (!data.candidates || !data.candidates.length) { hideAutocomplete(); return; }
+    showAutocomplete(data.candidates.slice(0, 8));
+  } catch (e) { hideAutocomplete(); }
+}
+
+function showAutocomplete(cands) {
+  const ac = $("autocomplete");
+  ac.innerHTML = cands.map((c) => `
+    <div class="ac-item" data-listing='${JSON.stringify(c).replace(/'/g, "&#39;")}'>
+      <span class="ac-flag">${flagOf(c.country)}</span>
+      <div class="ac-main"><strong>${c.ticker}</strong> · ${c.company}</div>
+      <span class="ac-meta">${c.exchange} · ${c.currency}</span>
+    </div>`).join("");
+  ac.querySelectorAll(".ac-item").forEach((el) => {
+    el.onclick = () => {
+      const c = JSON.parse(el.dataset.listing.replace(/&#39;/g, "'"));
+      $("query").value = c.ticker;
+      hideAutocomplete();
+      runAnalyze(c);
+    };
+  });
+  ac.classList.remove("hidden");
+}
+function hideAutocomplete() { $("autocomplete").classList.add("hidden"); }
+
+async function handleAnalyze() {
+  const q = $("query").value.trim();
+  if (!q) return;
+  $("error-box").classList.add("hidden");
+  // First resolve via /api/search
+  try {
+    const res = await fetch("/api/search?q=" + encodeURIComponent(q));
+    const data = await res.json();
+    if (!data.candidates || !data.candidates.length) {
+      // Treat as raw ticker — let backend try
+      runAnalyze({ ticker: q.toUpperCase() });
+      return;
+    }
+    if (data.needs_choice && data.candidates.length > 1) {
+      showDisambig(data.candidates);
+      return;
+    }
+    runAnalyze(data.candidates[0]);
+  } catch (e) {
+    runAnalyze({ ticker: q.toUpperCase() });
+  }
+}
+
+function showDisambig(cands) {
+  const list = $("disambig-list");
+  list.innerHTML = cands.map((c) => `
+    <div class="disambig-item" data-listing='${JSON.stringify(c).replace(/'/g, "&#39;")}'>
+      <div class="ac-flag">${flagOf(c.country)}</div>
+      <div class="disambig-main">
+        <div><strong>${c.ticker}</strong> — ${c.company}</div>
+        <div class="muted" style="font-size: 12px;">${c.exchange} · ${c.country} · ${c.currency}${c.industry ? " · " + c.industry : ""}</div>
+      </div>
+      <button class="btn-pick">Select →</button>
+    </div>`).join("");
+  list.querySelectorAll(".disambig-item").forEach((el) => {
+    el.onclick = () => {
+      const c = JSON.parse(el.dataset.listing.replace(/&#39;/g, "'"));
+      $("disambig-modal").classList.add("hidden");
+      runAnalyze(c);
+    };
+  });
+  $("disambig-modal").classList.remove("hidden");
+}
+$("disambig-cancel").onclick = () => $("disambig-modal").classList.add("hidden");
+
+async function runAnalyze(listing) {
+  $("error-box").classList.add("hidden");
+  $("results").classList.add("hidden");
+  $("loading").classList.remove("hidden");
+  $("analyze-btn").disabled = true;
+  try {
+    const res = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(listing),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      $("error-box").textContent = "❌ " + (data.error || "Analysis failed.");
+      $("error-box").classList.remove("hidden");
+    } else {
+      render(data);
+      $("results").classList.remove("hidden");
+    }
+  } catch (e) {
+    $("error-box").textContent = "❌ Network error: " + e.message;
+    $("error-box").classList.remove("hidden");
+  } finally {
+    $("loading").classList.add("hidden");
+    $("analyze-btn").disabled = false;
+  }
+}
+
+function render(d) {
+  $("freshness-header").innerHTML = `<span class="freshness-tag">${d.freshness} · ${d.input.last_date || "—"} · ${d.input.exchange}</span>`;
+  renderOverview(d);
+  renderValue(d);
+  renderMomentum(d);
+  renderCross(d);
+  renderRecommendation(d);
+}
+
+function renderOverview(d) {
+  const i = d.input;
+  const sym = i.currency_symbol;
+  const ccy = i.currency;
+  const fails = d.input_global_fails.length
+    ? `<span class="red">⚠️ Fails regional filter: ${d.input_global_fails.join(", ")}</span>`
+    : `<span class="green">✅ Passes all regional filters (${i.country})</span>`;
+  const fxLine = d.fx_to_usd && ccy !== "USD"
+    ? `<div class="muted" style="font-size: 12px;">FX: 1 ${ccy} = $${d.fx_to_usd.toFixed(4)}</div>` : "";
+  const flt = d.regional_filter;
+  $("overview").innerHTML = `
+    <div class="card">
+      <h2>${flagOf(i.country)} ${i.company} <span class="muted" style="font-weight: 400;">(${i.ticker})</span></h2>
+      <div class="muted">${i.exchange} · ${i.country} · ${i.region} · ${ccy} · ${i.sector || "Sector unavailable"} · ${i.industry || "Industry unavailable"}</div>
+      ${fxLine}
+      <div style="margin-top: 12px;">${fails}</div>
+      <div class="muted" style="font-size: 11px; margin-top: 6px;">
+        Regional filter: price ≥ ${sym}${flt.min_price}, vol ≥ ${flt.min_volume.toLocaleString()}, mcap ≥ $${(flt.min_mcap_usd/1e9).toFixed(0)}B USD
+      </div>
+      <div class="grid" style="margin-top: 16px;">
+        <div class="metric"><div class="label">Price</div><div class="value">${fmtPrice(i.price, sym, ccy)}</div></div>
+        <div class="metric"><div class="label">52W High</div><div class="value">${fmtPrice(i.high_52w, sym, ccy)}</div></div>
+        <div class="metric"><div class="label">52W Low</div><div class="value">${fmtPrice(i.low_52w, sym, ccy)}</div></div>
+        <div class="metric"><div class="label">% From Low</div><div class="value ${cls(i.pct_from_low)}">${fmtPct(i.pct_from_low)}</div></div>
+        <div class="metric"><div class="label">5D Perf</div><div class="value ${cls(i.perf_5d)}">${arrow(i.perf_5d)} ${fmtPct(i.perf_5d)}</div></div>
+        <div class="metric"><div class="label">RSI 14</div><div class="value">${fmtNum(i.rsi_14, 1)}</div></div>
+        <div class="metric"><div class="label">ROC 14</div><div class="value ${cls(i.roc_14)}">${fmtPct(i.roc_14)}</div></div>
+        <div class="metric"><div class="label">ROC 21</div><div class="value ${cls(i.roc_21)}">${fmtPct(i.roc_21)}</div></div>
+        <div class="metric"><div class="label">20D MA</div><div class="value">${fmtPrice(i.ma_20, sym, ccy)}</div></div>
+        <div class="metric"><div class="label">50D MA</div><div class="value">${fmtPrice(i.ma_50, sym, ccy)}</div></div>
+        <div class="metric"><div class="label">200D MA</div><div class="value">${fmtPrice(i.ma_200, sym, ccy)}</div></div>
+        <div class="metric"><div class="label">Avg Vol (20D)</div><div class="value">${fmtVol(i.avg_volume)}</div></div>
+        <div class="metric"><div class="label">Market Cap</div><div class="value">${fmtMcapBoth(i.market_cap, i.market_cap_usd, sym)}</div></div>
+        <div class="metric"><div class="label">Trailing P/E</div><div class="value">${fmtNum(i.trailing_pe, 2)}</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Peer Universe</h2>
+      <div>Found <strong>${d.peer_count}</strong> enriched peers (out of ${d.peer_total_in_universe} matched). Tier: <strong>${d.peer_tier}</strong>.</div>
+      <div class="muted" style="margin-top: 8px; font-size: 12px;">Tiered match: industry+country → industry+region → sector+country → sector+region → global industry → global sector.</div>
+    </div>`;
+}
+
+function renderValue(d) {
+  const rows = d.value_hits.map((p) => `
+    <tr>
+      <td>${flagOf(p.country)} ${p.company}</td>
+      <td><strong>${p.ticker}</strong></td>
+      <td class="num">${fmtPrice(p.price, p.currency_symbol, p.currency)}</td>
+      <td class="num">${fmtPrice(p.low_52w, p.currency_symbol, p.currency)}</td>
+      <td class="num green">${fmtPct(p.pct_from_low)}</td>
+      <td class="num">${fmtNum(p.trailing_pe, 1)}</td>
+      <td class="num">${fmtMcapBoth(p.market_cap, p.market_cap_usd, p.currency_symbol)}</td>
+      <td class="num">${fmtVol(p.avg_volume)}</td>
+      <td>${p.country}</td>
+      <td>${p.industry || "—"}</td>
+    </tr>`).join("");
+  const i = d.input;
+  const qualifiesNote = d.input_value_qualifies
+    ? `<div class="green">✅ ${i.ticker} qualifies for the value screen.</div>`
+    : `<div class="yellow">⚠️ ${i.ticker} does NOT qualify (within 10% low: ${i.pct_from_low != null && i.pct_from_low <= 10 ? "yes" : "no"}; P/E ≤ 10: ${i.trailing_pe && i.trailing_pe <= 10 && i.trailing_pe > 0 ? "yes" : "no"}).</div>`;
+  const trends = [];
+  if (i.pct_from_low != null && i.pct_from_low <= 10) trends.push("Trading near 52W low — historically a value entry zone.");
+  if (i.trailing_pe && i.trailing_pe <= 10) trends.push(`Trailing P/E of ${i.trailing_pe.toFixed(1)}x is below the 10x threshold.`);
+  if (i.peer_median_pe && i.trailing_pe) trends.push(`Peer median P/E ≈ ${i.peer_median_pe.toFixed(1)}x vs ${i.trailing_pe.toFixed(1)}x for ${i.ticker}.`);
+  if (!trends.length) trends.push("No standout valuation trend at current levels.");
+  const risks = ["Value traps: low P/E may reflect deteriorating fundamentals.", "Sector cyclicality and earnings revisions can re-rate multiples.", "Cross-border peers face FX and regulatory differences."];
+  $("value").innerHTML = `
+    <div class="card">
+      <h2>Value Screen — Peers within 10% of 52W Low and P/E ≤ 10</h2>
+      ${qualifiesNote}
+      ${rows ? `<table style="margin-top:12px;"><thead><tr>
+        <th>Company</th><th>Ticker</th><th class="num">Price</th><th class="num">52W Low</th>
+        <th class="num">% From Low</th><th class="num">Trailing P/E</th><th class="num">Market Cap</th>
+        <th class="num">Avg Vol</th><th>Country</th><th>Industry</th>
+      </tr></thead><tbody>${rows}</tbody></table>` : `<div class="muted">No peers qualified the value screen.</div>`}
+      <h3>Valuation Trends</h3><ul class="clean">${trends.map((t) => `<li>${t}</li>`).join("")}</ul>
+      <h3>Risks</h3><ul class="clean">${risks.map((t) => `<li>${t}</li>`).join("")}</ul>
+    </div>`;
+}
+
+function renderMomentum(d) {
+  const rows = d.momentum_hits.map((p, idx) => {
+    const sigClass = p.signal === "Momentum continuation" ? "green" : p.signal === "Potential reversal" ? "red" : "yellow";
+    const outClass = p.outlook === "Bullish" ? "green" : p.outlook === "Bearish" ? "red" : "muted";
+    return `<tr>
+      <td>${idx + 1}</td>
+      <td>${flagOf(p.country)} ${p.company}</td>
+      <td><strong>${p.ticker}</strong></td>
+      <td class="num ${cls(p.perf_5d)}">${arrow(p.perf_5d)} ${fmtPct(p.perf_5d)}</td>
+      <td class="num ${cls(p.roc_14)}">${fmtPct(p.roc_14)}</td>
+      <td class="num ${cls(p.roc_21)}">${fmtPct(p.roc_21)}</td>
+      <td class="num">${fmtNum(p.rsi_14, 1)}</td>
+      <td>${p.rsi_label}</td>
+      <td class="num ${cls(p.vs_ma_20)}">${p.vs_ma_20_label}</td>
+      <td class="num ${cls(p.vs_ma_50)}">${p.vs_ma_50_label}</td>
+      <td class="num ${cls(p.vs_ma_200)}">${p.vs_ma_200_label}</td>
+      <td class="${sigClass}">${p.signal}</td>
+      <td class="${outClass}">${p.outlook}</td>
+      <td>${p.confidence}</td>
+    </tr>`;
+  }).join("");
+  $("momentum").innerHTML = `
+    <div class="card">
+      <h2>Momentum — Top 10 Peers by 5D Performance</h2>
+      ${rows ? `<table style="margin-top:12px; font-size:12px;"><thead><tr>
+        <th>#</th><th>Company</th><th>Ticker</th><th class="num">5D %</th>
+        <th class="num">ROC 14</th><th class="num">ROC 21</th><th class="num">RSI 14</th>
+        <th>RSI Label</th><th class="num">vs 20D</th><th class="num">vs 50D</th>
+        <th class="num">vs 200D</th><th>Signal</th><th>Outlook</th><th>Conf</th>
+      </tr></thead><tbody>${rows}</tbody></table>` : `<div class="muted">No peers passed momentum screen.</div>`}
+    </div>`;
+}
+
+function renderCross(d) {
+  if (!d.cross.length) {
+    $("cross").innerHTML = `<div class="card"><h2>Cross-Analysis</h2><div class="muted">No stocks appear in both value and momentum screens. High-conviction overlap not present today.</div></div>`;
+    return;
+  }
+  const rows = d.cross.map((p) => `
+    <tr><td><strong>${p.ticker}</strong></td><td>${flagOf(p.country)} ${p.company}</td>
+    <td class="num">${fmtPrice(p.price, p.currency_symbol, p.currency)}</td>
+    <td class="num green">${fmtPct(p.pct_from_low)}</td>
+    <td class="num">${fmtNum(p.trailing_pe, 1)}</td>
+    <td class="num green">${fmtPct(p.perf_5d)}</td><td class="num">${fmtNum(p.rsi_14, 1)}</td></tr>`).join("");
+  $("cross").innerHTML = `
+    <div class="card">
+      <h2>Cross-Analysis — Overlap of Value & Momentum</h2>
+      <p>Stocks below appear in <strong>both</strong> the value screen and the top-10 momentum screen.
+      Overlap suggests a re-rating may be underway from a depressed base — historically a high-conviction setup.</p>
+      <table><thead><tr><th>Ticker</th><th>Company</th><th class="num">Price</th>
+      <th class="num">% From Low</th><th class="num">Trailing P/E</th>
+      <th class="num">5D %</th><th class="num">RSI 14</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>`;
+}
+
+function renderRecommendation(d) {
+  const s = d.score;
+  const n = d.narrative;
+  const i = d.input;
+  const sym = i.currency_symbol;
+  const ccy = i.currency;
+  const recCls = s.recommendation.toLowerCase();
+  const list = (arr) => `<ul class="clean">${arr.map((x) => `<li>${x}</li>`).join("")}</ul>`;
+  $("recommendation").innerHTML = `
+    <div class="card">
+      <h2>${flagOf(i.country)} ${i.ticker} — Final Recommendation</h2>
+      <div class="flex-row" style="align-items: center; margin-top: 8px;">
+        <div><span class="pill ${recCls}">${s.recommendation}</span></div>
+        <div>Confidence: <strong>${s.confidence}</strong></div>
+        <div>Time Horizon: <strong>${n.horizon}</strong></div>
+      </div>
+      <div class="score-row">
+        <div class="score-box"><div class="label">Value Score</div><div class="score green">${s.value_score} / 4</div></div>
+        <div class="score-box"><div class="label">Momentum Score</div><div class="score green">${s.momentum_score} / 7</div></div>
+        <div class="score-box"><div class="label">Penalties</div><div class="score red">-${s.penalties}</div></div>
+        <div class="score-box"><div class="label">Total</div><div class="score">${s.total_score}</div></div>
+      </div>
+      <h3>Score Breakdown (transparent)</h3>
+      <div class="flex-row">
+        <div><strong>Value</strong>${s.value_breakdown.length ? list(s.value_breakdown) : '<div class="muted">No value points triggered.</div>'}</div>
+        <div><strong>Momentum</strong>${s.momentum_breakdown.length ? list(s.momentum_breakdown) : '<div class="muted">No momentum points triggered.</div>'}</div>
+        <div><strong>Penalties</strong>${s.penalty_breakdown.length ? list(s.penalty_breakdown) : '<div class="muted">No penalties.</div>'}</div>
+      </div>
+      ${s.missing_data.length ? `<div class="disclaimer" style="border-left-color: var(--yellow);">⚠️ Missing data: ${s.missing_data.join(", ")} — confidence reduced.</div>` : ""}
+    </div>
+    <div class="card">
+      <h2>Snapshot</h2>
+      <table>
+        <tr><th>Ticker</th><td>${i.ticker}</td><th>Price</th><td>${fmtPrice(i.price, sym, ccy)}</td></tr>
+        <tr><th>Exchange</th><td>${i.exchange}</td><th>Country</th><td>${flagOf(i.country)} ${i.country}</td></tr>
+        <tr><th>Sector</th><td>${i.sector || "—"}</td><th>Industry</th><td>${i.industry || "—"}</td></tr>
+        <tr><th>Market Cap</th><td>${fmtMcapBoth(i.market_cap, i.market_cap_usd, sym)}</td><th>Trailing P/E</th><td>${fmtNum(i.trailing_pe, 2)}</td></tr>
+        <tr><th>52W Range</th><td>${fmtPrice(i.low_52w, sym, ccy)} – ${fmtPrice(i.high_52w, sym, ccy)}</td><th>RSI 14</th><td>${fmtNum(i.rsi_14, 1)} (${i.rsi_14 > 70 ? "Overbought" : i.rsi_14 < 30 ? "Oversold" : "Neutral"})</td></tr>
+      </table>
+    </div>
+    <div class="flex-row">
+      <div class="card"><h2 class="green">Bull Case ✅</h2>${list(n.bull_case)}</div>
+      <div class="card"><h2 class="red">Bear Case ❌</h2>${list(n.bear_case)}</div>
+    </div>
+    <div class="card"><h2>Base Case →</h2>${list(n.base_case)}</div>
+    <div class="card"><h2>Catalysts</h2>${list(n.catalysts)}</div>
+    <div class="flex-row">
+      <div class="card"><h2 class="yellow">Fundamental Risks ⚠️</h2>${list(n.fundamental_risks)}</div>
+      <div class="card"><h2 class="yellow">Technical Risks ⚠️</h2>${list(n.technical_risks)}</div>
+    </div>`;
+}
+
+// Auto-prefill from landing page
+const urlTicker = new URLSearchParams(window.location.search).get("ticker");
+if (urlTicker) {
+  $("query").value = urlTicker.toUpperCase();
+  setTimeout(handleAnalyze, 100);
+}
+</script>
+</body>
+</html>
