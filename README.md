@@ -75,6 +75,20 @@ Open http://127.0.0.1:5050 — landing page. Click **Launch App** or hit `/app` 
 
 No API keys required. Data sourced from Stooq (CSV) with yfinance fallback.
 
+### One-click launch (recommended)
+
+After the one-time setup below, double-click **`Global-Stock-Analyser.command`**
+in Finder. macOS shows a native password dialog, the server starts in the
+background, and the browser opens automatically at
+**https://Global-Stock-Analyser/Local**.
+
+When you close the last browser tab, the server **auto-shuts down** within
+~45 seconds (or immediately on `beforeunload`). Re-launching reuses the
+running process if it's already up.
+
+> Tip: drag `Global-Stock-Analyser.command` to your Dock or alias it to your
+> Desktop for one-click access.
+
 ### Run securely as `https://Global-Stock-Analyser/Local`
 
 One-time setup (sudo prompts twice — once for `/etc/hosts`, once for binding port 443):

@@ -463,6 +463,19 @@ function renderRecommendation(d) {
     </div>`;
 }
 
+// Keep-alive heartbeat: tells server we're still here, server auto-shuts after idle timeout.
+const _hbTimer = setInterval(() => {
+  fetch(APP_BASE + "/api/heartbeat", { method: "POST", keepalive: true }).catch(() => {});
+}, 10000);
+
+// Tell server when tab/window closes so it shuts down promptly.
+window.addEventListener("beforeunload", () => {
+  try {
+    if (navigator.sendBeacon) navigator.sendBeacon(APP_BASE + "/api/shutdown");
+    else fetch(APP_BASE + "/api/shutdown", { method: "POST", keepalive: true });
+  } catch (e) {}
+});
+
 // Auto-prefill from landing page — sanitize untrusted query string
 const urlTicker = new URLSearchParams(window.location.search).get("ticker");
 if (urlTicker) {

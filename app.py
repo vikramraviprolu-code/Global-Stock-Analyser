@@ -1,15 +1,19 @@
 """Flask web app for global stock analysis.
 
 Environment variables (all optional):
-    HOST          bind interface, default 127.0.0.1
-    PORT          bind port, default 5050
-    URL_PREFIX    mount under prefix, e.g. "/Local"; empty = root
-    SSL_CERT      path to PEM cert; if set with SSL_KEY, serves HTTPS
-    SSL_KEY       path to PEM private key
+    HOST            bind interface, default 127.0.0.1
+    PORT            bind port, default 5050
+    URL_PREFIX      mount under prefix, e.g. "/Local"; empty = root
+    SSL_CERT        path to PEM cert; if set with SSL_KEY, serves HTTPS
+    SSL_KEY         path to PEM private key
+    IDLE_TIMEOUT    seconds without a request before auto-shutdown (default 45)
+    AUTO_SHUTDOWN   set to "0" to disable idle watcher (default enabled)
 """
 import os
 import re
 import ssl
+import threading
+import time
 from flask import Flask, render_template, request, jsonify
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from werkzeug.exceptions import NotFound
@@ -44,6 +48,35 @@ def _sanitize_optional(value, max_len=80):
     if not SAFE_STR_RE.match(s):
         return None
     return s
+
+
+IDLE_TIMEOUT = int(os.getenv("IDLE_TIMEOUT", "45"))
+AUTO_SHUTDOWN = os.getenv("AUTO_SHUTDOWN", "1") != "0"
+_last_activity = time.time()
+_idle_thread_started = False
+
+
+def _idle_watcher():
+    """Exit the process after IDLE_TIMEOUT seconds without any activity."""
+    while True:
+        time.sleep(5)
+        if time.time() - _last_activity > IDLE_TIMEOUT:
+            app.logger.info("Idle timeout reached. Shutting down.")
+            os._exit(0)
+
+
+def _bump_activity():
+    global _last_activity
+    _last_activity = time.time()
+
+
+@app.before_request
+def _track_activity():
+    _bump_activity()
+    global _idle_thread_started
+    if AUTO_SHUTDOWN and not _idle_thread_started:
+        _idle_thread_started = True
+        threading.Thread(target=_idle_watcher, daemon=True).start()
 
 
 @app.before_request
@@ -102,6 +135,19 @@ def api_search():
         "candidates": candidates,
         "needs_choice": needs_disambiguation(candidates, q),
     })
+
+
+@app.route("/api/heartbeat", methods=["POST"])
+def api_heartbeat():
+    """Browser keep-alive ping. Activity is bumped in _track_activity."""
+    return ("", 204)
+
+
+@app.route("/api/shutdown", methods=["POST"])
+def api_shutdown():
+    """Browser-triggered graceful shutdown (sent on beforeunload)."""
+    threading.Timer(0.3, lambda: os._exit(0)).start()
+    return ("", 204)
 
 
 @app.route("/api/analyze", methods=["POST"])

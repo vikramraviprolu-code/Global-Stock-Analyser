@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.5.0] - 2026-04-27
+
+### Added
+- **Browser-driven lifecycle.** Server starts on demand via the Finder
+  launcher and shuts down when the last tab closes — no manual stop.
+- `Global-Stock-Analyser.command` — double-click launcher that triggers
+  a native macOS admin password dialog (osascript), starts the HTTPS
+  server detached, waits for readiness, and opens the browser.
+- `/api/heartbeat` endpoint — frontend pings every 10s while the page is
+  open; server tracks last-activity timestamp.
+- `/api/shutdown` endpoint — frontend fires `navigator.sendBeacon` on
+  `beforeunload` for prompt graceful exit.
+- Background idle watcher — exits the process if no request seen for
+  `IDLE_TIMEOUT` seconds (default 45). Disable with `AUTO_SHUTDOWN=0`.
+
+### Notes
+- The launcher reuses an already-running server: clicking it a second
+  time just opens the browser without re-prompting for sudo.
+- If beacon delivery fails (network drop, force-quit), the idle watcher
+  ensures the server still exits within the timeout.
+
 ## [0.4.0] - 2026-04-27
 
 ### Added

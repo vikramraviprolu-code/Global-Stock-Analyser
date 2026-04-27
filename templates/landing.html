@@ -263,5 +263,18 @@
   </div>
 </footer>
 
+<script>
+  // Keep-alive heartbeat + shutdown beacon (matches dashboard behaviour).
+  const APP_BASE = {{ request.script_root|tojson }};
+  setInterval(() => {
+    fetch(APP_BASE + "/api/heartbeat", { method: "POST", keepalive: true }).catch(() => {});
+  }, 10000);
+  window.addEventListener("beforeunload", () => {
+    try {
+      if (navigator.sendBeacon) navigator.sendBeacon(APP_BASE + "/api/shutdown");
+      else fetch(APP_BASE + "/api/shutdown", { method: "POST", keepalive: true });
+    } catch (e) {}
+  });
+</script>
 </body>
 </html>
