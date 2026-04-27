@@ -87,3 +87,6 @@ certs/
 *.pem
 *.key
 *.crt
+
+# mkcert binary downloaded by Install-Browser-Mode.command
+bin/

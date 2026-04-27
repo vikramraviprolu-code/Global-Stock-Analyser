@@ -54,45 +54,20 @@ echo "📦 Installing Python deps into venv"
   exit 1
 }
 
-# 3. Generate cert via mkcert (real local CA, no browser warnings).
-#    Falls back to openssl + system trust if download fails.
-mkdir -p "$DEST/certs" "$DEST/bin"
+# 3. Cert: prefer pre-generated certs from USER_CERTS (handed in by the
+#    user-level launcher that ran mkcert under the user's login session).
+#    Fall back to openssl self-signed only if no certs were provided.
+mkdir -p "$DEST/certs"
 
-ARCH="$(uname -m)"
-case "$ARCH" in
-  arm64)  MKCERT_ARCH="darwin-arm64" ;;
-  x86_64) MKCERT_ARCH="darwin-amd64" ;;
-  *)      MKCERT_ARCH="" ;;
-esac
-
-MKCERT_BIN="$DEST/bin/mkcert"
-MKCERT_VERSION="v1.4.4"
-
-if [[ -n "$MKCERT_ARCH" && ! -x "$MKCERT_BIN" ]]; then
-  echo "📥 Downloading mkcert $MKCERT_VERSION ($MKCERT_ARCH)..."
-  if curl -fsSL --max-time 30 -o "$MKCERT_BIN" \
-       "https://github.com/FiloSottile/mkcert/releases/download/${MKCERT_VERSION}/mkcert-${MKCERT_VERSION}-${MKCERT_ARCH}"; then
-    chmod +x "$MKCERT_BIN"
-  else
-    echo "    (mkcert download failed; will fall back to openssl)"
-    rm -f "$MKCERT_BIN"
-  fi
-fi
-
-if [[ -x "$MKCERT_BIN" ]]; then
-  if [[ ! -f "$DEST/certs/cert.pem" || ! -f "$DEST/certs/key.pem" ]]; then
-    echo "🔐 Installing local CA into macOS trust store via mkcert..."
-    # CAROOT defaults to ~/Library/Application Support/mkcert; under sudo this
-    # is root's home, which is what we want for a system-wide install.
-    "$MKCERT_BIN" -install
-    echo "🔐 Issuing cert for Global-Stock-Analyser..."
-    "$MKCERT_BIN" -cert-file "$DEST/certs/cert.pem" -key-file "$DEST/certs/key.pem" \
-      Global-Stock-Analyser localhost 127.0.0.1
-    chmod 600 "$DEST/certs/key.pem"
-    chmod 644 "$DEST/certs/cert.pem"
-  fi
+if [[ -n "${USER_CERTS:-}" && -f "$USER_CERTS/cert.pem" && -f "$USER_CERTS/key.pem" ]]; then
+  echo "🔐 Installing pre-issued mkcert cert from $USER_CERTS"
+  cp "$USER_CERTS/cert.pem" "$DEST/certs/cert.pem"
+  cp "$USER_CERTS/key.pem"  "$DEST/certs/key.pem"
+  chmod 600 "$DEST/certs/key.pem"
+  chmod 644 "$DEST/certs/cert.pem"
+  CERT_SOURCE="mkcert"
 elif [[ ! -f "$DEST/certs/cert.pem" || ! -f "$DEST/certs/key.pem" ]]; then
-  echo "🔒 Falling back to openssl self-signed cert..."
+  echo "🔒 No pre-issued cert; falling back to openssl self-signed..."
   openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 365 \
     -keyout "$DEST/certs/key.pem" -out "$DEST/certs/cert.pem" \
     -subj "/CN=Global-Stock-Analyser" \
@@ -100,6 +75,9 @@ elif [[ ! -f "$DEST/certs/cert.pem" || ! -f "$DEST/certs/key.pem" ]]; then
     -addext "extendedKeyUsage=serverAuth" 2>/dev/null
   chmod 600 "$DEST/certs/key.pem"
   chmod 644 "$DEST/certs/cert.pem"
+  CERT_SOURCE="openssl"
+else
+  CERT_SOURCE="existing"
 fi
 
 # 4. /etc/hosts mapping
@@ -120,9 +98,9 @@ sed -e "s|__PYTHON__|${PYTHON}|g" \
 chown root:wheel "$PLIST_DEST"
 chmod 644 "$PLIST_DEST"
 
-# 5b. If we used the openssl fallback, also add the leaf cert to System keychain
-#     trust (mkcert already handled this for its CA, so this only fires on fallback).
-if [[ ! -x "$MKCERT_BIN" ]]; then
+# 5b. If we fell back to openssl, also add the leaf cert to System keychain trust.
+#     For mkcert certs the local CA is already trusted in the user's login keychain.
+if [[ "${CERT_SOURCE:-}" == "openssl" ]]; then
   echo "🔐 Adding self-signed cert to System keychain trust..."
   security add-trusted-cert -d -r trustRoot \
     -k /Library/Keychains/System.keychain \

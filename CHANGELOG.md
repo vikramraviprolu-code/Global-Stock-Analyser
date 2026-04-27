@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.6.6] - 2026-04-27
+
+### Fixed
+- **`mkcert -install` failed under sudo** with
+  `SecTrustSettingsSetTrustSettings: The authorization was denied since
+  no user interaction was possible`. macOS blocks trust-store changes
+  from non-interactive elevated processes (like osascript-with-admin).
+- New install split: the user-level `Install-Browser-Mode.command`
+  downloads mkcert and runs `mkcert -install` (login keychain) +
+  `mkcert -cert-file ...` BEFORE asking for sudo. Cert files land in
+  `/tmp/equityscope_certs_$$/`.
+- The sudo-elevated `install_daemon.sh` now reads pre-issued certs from
+  `USER_CERTS` env var; it no longer attempts mkcert-install itself.
+- Falls back to `openssl` self-signed + System-keychain trust if mkcert
+  certs aren't provided (e.g. download failed).
+- `Uninstall-Browser-Mode.command` runs `mkcert -uninstall` as the user
+  (correct context for login-keychain changes) before invoking sudo.
+
+### Changed
+- mkcert binary now caches in the project's own `bin/` (gitignored)
+  rather than `/usr/local/.../bin/`, since it's needed in the user
+  context, not the daemon's.
+
 ## [0.6.5] - 2026-04-27
 
 ### Added
