@@ -12,6 +12,14 @@ Only the latest `main` branch receives security fixes. Pin a tagged release if y
 2. Include reproduction steps, affected version/commit, and suggested mitigation if known.
 3. Allow up to 7 days for an initial response.
 
+## Hardening applied in v0.4.0
+
+| Threat | Mitigation |
+| --- | --- |
+| **Plaintext HTTP** | TLS via `SSL_CERT`/`SSL_KEY` env vars; HSTS header on TLS responses. |
+| **Host-header injection / DNS rebinding** | `TRUSTED_HOSTS` allow-list rejects unknown `Host` headers (HTTP 400). |
+| **Path collisions when reverse-proxied** | App mounts under `URL_PREFIX` via Werkzeug `DispatcherMiddleware`. |
+
 ## Hardening applied in v0.3.0
 
 | Threat | Mitigation |

@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.4.0] - 2026-04-27
+
+### Added
+- **HTTPS support** — app now serves TLS when `SSL_CERT` and `SSL_KEY` env
+  vars point to PEM files. HSTS header sent on TLS responses.
+- **URL prefix mount** — `URL_PREFIX=/Local` env var mounts the entire app
+  under that prefix via Werkzeug `DispatcherMiddleware`. All `url_for()`
+  links and template-injected JS API base URLs respect the prefix.
+- **Host-header allow-list** — `TRUSTED_HOSTS` env var rejects requests
+  whose `Host` header isn't on the list (defense vs. Host-header injection
+  / DNS rebinding).
+- **`scripts/gen_cert.sh`** — generates self-signed TLS cert with SAN for
+  `Global-Stock-Analyser`, `localhost`, and `127.0.0.1`.
+- **`scripts/setup_hosts.sh`** — adds `127.0.0.1 Global-Stock-Analyser` to
+  `/etc/hosts` (idempotent, sudo-aware).
+- **`scripts/run_secure.sh`** — orchestrates cert/hosts checks then
+  launches HTTPS on the configured port and prefix.
+- README section documenting the secure launch flow.
+
+### Changed
+- Hardcoded `/api/...` and `/app` paths in templates now resolve via
+  `url_for()` and `request.script_root` so prefix mounting works end-to-end.
+
 ## [0.3.0] - 2026-04-27
 
 ### Security

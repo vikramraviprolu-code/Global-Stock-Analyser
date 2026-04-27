@@ -20,7 +20,7 @@
       <a href="#how">How it works</a>
       <a href="#scoring">Scoring</a>
       <a href="#data">Data</a>
-      <a href="/app" class="lp-cta-small">Launch App →</a>
+      <a href="{{ url_for('dashboard') }}" class="lp-cta-small">Launch App →</a>
     </div>
   </div>
 </nav>
@@ -34,7 +34,7 @@
       Get a value screen, momentum scan, peer comps in local currency (with USD overlay), and a
       transparent Buy / Watch / Avoid recommendation. No black boxes. No fabricated data.
     </p>
-    <form class="lp-search" action="/app" method="get">
+    <form class="lp-search" action="{{ url_for('dashboard') }}" method="get">
       <input name="ticker" type="text" placeholder="AAPL · Reliance · Toyota · BMW.DE · 7203.T · TSMC…" autocomplete="off" />
       <button type="submit">Analyze →</button>
     </form>
@@ -243,7 +243,7 @@
 <section class="lp-cta-section">
   <h2>Run your first analysis.</h2>
   <p>Free. No signup. No keys. Just a ticker.</p>
-  <form class="lp-search lp-search-cta" action="/app" method="get">
+  <form class="lp-search lp-search-cta" action="{{ url_for('dashboard') }}" method="get">
     <input name="ticker" type="text" placeholder="AAPL" autocomplete="off" />
     <button type="submit">Analyze →</button>
   </form>

@@ -62,7 +62,7 @@ exchanges** in **14 currencies**.
 - Python 3.9+
 - ~50 MB disk for dependencies
 
-### Install & run
+### Install & run (plain HTTP, dev mode)
 
 ```bash
 git clone https://github.com/vikramraviprolu-code/Global-Stock-Analyser.git
@@ -74,6 +74,45 @@ python app.py
 Open http://127.0.0.1:5050 — landing page. Click **Launch App** or hit `/app` directly.
 
 No API keys required. Data sourced from Stooq (CSV) with yfinance fallback.
+
+### Run securely as `https://Global-Stock-Analyser/Local`
+
+One-time setup (sudo prompts twice — once for `/etc/hosts`, once for binding port 443):
+
+```bash
+# 1. Map hostname → 127.0.0.1
+sudo bash scripts/setup_hosts.sh
+
+# 2. Generate self-signed TLS cert (no sudo needed)
+bash scripts/gen_cert.sh
+
+# 3. (Optional) Trust the cert in macOS keychain to remove browser warning:
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain certs/cert.pem
+
+# 4. Launch (port 443 needs sudo to bind)
+sudo bash scripts/run_secure.sh
+```
+
+Open: **https://Global-Stock-Analyser/Local**
+
+**No-sudo alternative** — bind 8443 instead:
+
+```bash
+PORT=8443 bash scripts/run_secure.sh
+# → https://Global-Stock-Analyser:8443/Local
+```
+
+**Environment variables** (all optional):
+
+| Var | Default | Purpose |
+| --- | --- | --- |
+| `HOST` | `127.0.0.1` | Bind interface |
+| `PORT` | `5050` | Bind port |
+| `URL_PREFIX` | `` (empty) | Mount under prefix, e.g. `/Local` |
+| `SSL_CERT` | unset | Path to PEM cert; with `SSL_KEY` enables HTTPS |
+| `SSL_KEY` | unset | Path to PEM private key |
+| `TRUSTED_HOSTS` | `127.0.0.1,localhost,global-stock-analyser` | Allow-listed Host header values |
 
 ### Docker (optional)
 

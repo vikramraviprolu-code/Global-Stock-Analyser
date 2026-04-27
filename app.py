@@ -1,20 +1,41 @@
-"""Flask web app for global stock analysis."""
+"""Flask web app for global stock analysis.
+
+Environment variables (all optional):
+    HOST          bind interface, default 127.0.0.1
+    PORT          bind port, default 5050
+    URL_PREFIX    mount under prefix, e.g. "/Local"; empty = root
+    SSL_CERT      path to PEM cert; if set with SSL_KEY, serves HTTPS
+    SSL_KEY       path to PEM private key
+"""
+import os
 import re
+import ssl
 from flask import Flask, render_template, request, jsonify
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
+from werkzeug.exceptions import NotFound
 from analyzer import run_analysis
 from resolver import search, needs_disambiguation
 from markets import listing_meta
 
-app = Flask(__name__)
+URL_PREFIX = os.getenv("URL_PREFIX", "").rstrip("/")  # e.g. "/Local"
 
-# Strict ticker pattern: letters, digits, optional dot suffix, optional dash/ampersand.
-# Examples that match: AAPL, BRK-B, M&M.NS, 0700.HK, RELIANCE.NS, 005930.KS, VOLV-B.ST
+app = Flask(__name__)
+if URL_PREFIX:
+    app.config["APPLICATION_ROOT"] = URL_PREFIX
+
+# Allow the configured hostname to reach the app even when bound to 127.0.0.1.
+# Werkzeug rejects unknown Host headers when SERVER_NAME is set, so leave it
+# unset and instead validate via a list of trusted hosts.
+TRUSTED_HOSTS = {h.strip().lower() for h in os.getenv(
+    "TRUSTED_HOSTS",
+    "127.0.0.1,localhost,global-stock-analyser",
+).split(",") if h.strip()}
+
 TICKER_RE = re.compile(r"^[A-Z0-9]{1,12}(?:-[A-Z0-9]{1,4})?(?:\.[A-Z]{1,4})?$")
 SAFE_STR_RE = re.compile(r"^[A-Za-z0-9 .\-&,'/+()]{0,80}$")
 
 
 def _sanitize_optional(value, max_len=80):
-    """Return string if it's a safe, short identifier; None otherwise."""
     if value is None:
         return None
     s = str(value).strip()
@@ -25,16 +46,23 @@ def _sanitize_optional(value, max_len=80):
     return s
 
 
+@app.before_request
+def _validate_host():
+    """Reject Host header that isn't on the allow-list (defense vs Host-header attacks)."""
+    host = (request.host or "").split(":")[0].lower()
+    if host and host not in TRUSTED_HOSTS:
+        return jsonify({"error": "Host not allowed."}), 400
+
+
 @app.after_request
 def _security_headers(resp):
-    """Defense-in-depth: prevent clickjacking, MIME sniffing, content injection."""
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["X-Frame-Options"] = "DENY"
     resp.headers["Referrer-Policy"] = "no-referrer"
     resp.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    if request.is_secure:
+        resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     if request.path.startswith("/static") or request.path in ("/", "/app"):
-        # CSP locks scripts/styles to same origin; inline allowed for current templates.
-        # Move to nonces if you externalize the app.js.
         resp.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline'; "
@@ -65,7 +93,6 @@ def api_search():
         return jsonify({"error": "Empty query."}), 400
     if len(q) > 80:
         return jsonify({"error": "Query too long."}), 400
-    # Disallow control chars and angle brackets to defang downstream consumers
     if re.search(r"[\x00-\x1f<>]", q):
         return jsonify({"error": "Invalid characters in query."}), 400
     candidates = search(q, limit=10)
@@ -86,8 +113,6 @@ def api_analyze():
     if not TICKER_RE.match(ticker):
         return jsonify({"error": "Invalid ticker format."}), 400
 
-    # Sanitize all caller-provided metadata. Anything that fails the pattern is dropped
-    # (we'll fall back to suffix-based inference instead of trusting the field).
     listing = {
         "ticker": ticker,
         "company": _sanitize_optional(data.get("company")),
@@ -107,11 +132,36 @@ def api_analyze():
         if "error" in result:
             return jsonify(result), 400
         return jsonify(result)
-    except Exception as e:
-        # Avoid leaking internal exception details to clients
+    except Exception:
         app.logger.exception("Analysis failed for %s", ticker)
         return jsonify({"error": "Analysis failed. See server logs."}), 500
 
 
+# Build the WSGI application that respects URL_PREFIX so internal `url_for`
+# calls render the prefix automatically and requests outside the prefix 404.
+if URL_PREFIX:
+    application = DispatcherMiddleware(NotFound(), {URL_PREFIX: app})
+else:
+    application = app
+
+
+def _build_ssl_context():
+    cert = os.getenv("SSL_CERT")
+    key = os.getenv("SSL_KEY")
+    if not (cert and key):
+        return None
+    if not (os.path.exists(cert) and os.path.exists(key)):
+        raise FileNotFoundError(f"SSL_CERT or SSL_KEY missing: {cert}, {key}")
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.load_cert_chain(cert, key)
+    return ctx
+
+
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5050, debug=False)
+    host = os.getenv("HOST", "127.0.0.1")
+    port = int(os.getenv("PORT", "5050"))
+    ctx = _build_ssl_context()
+    from werkzeug.serving import run_simple
+    scheme = "https" if ctx else "http"
+    print(f"Serving {scheme}://{host}:{port}{URL_PREFIX or '/'} ...")
+    run_simple(host, port, application, ssl_context=ctx, use_reloader=False, threaded=True)

@@ -81,3 +81,9 @@ data/*.parquet
 # Secrets (none required, but guard anyway)
 .env.local
 secrets.json
+
+# TLS certs — generated locally, never commit
+certs/
+*.pem
+*.key
+*.crt
