@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.6.7] - 2026-04-27
+
+### Fixed
+- **mkcert failed with `permission denied` on `rootCA-key.pem`.** A prior
+  install ran mkcert under sudo, which wrote
+  `~/Library/Application Support/mkcert/` as root. Subsequent user-level
+  runs couldn't read the CA key. Installer now detects an orphaned
+  root-owned CAROOT and removes it via a single admin prompt before
+  running mkcert again as the user.
+
 ## [0.6.6] - 2026-04-27
 
 ### Fixed

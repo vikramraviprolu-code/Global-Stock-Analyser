@@ -46,6 +46,21 @@ if [[ ! -x "$MKCERT_BIN" ]]; then
   chmod +x "$MKCERT_BIN"
 fi
 
+# 1b. Heal an orphaned mkcert CAROOT from a prior failed install. Older
+#     versions of this installer ran mkcert under sudo, which left
+#     ~/Library/Application Support/mkcert root-owned and unreadable by
+#     the user. Detect and remove via a single admin prompt.
+MKCERT_CAROOT="$HOME/Library/Application Support/mkcert"
+if [[ -d "$MKCERT_CAROOT" ]]; then
+  CAROOT_OWNER_UID="$(stat -f %u "$MKCERT_CAROOT" 2>/dev/null || echo 0)"
+  if [[ "$CAROOT_OWNER_UID" != "$(id -u)" ]]; then
+    echo "🔧 Removing orphaned root-owned mkcert CAROOT from a prior failed install..."
+    /usr/bin/osascript <<EOF
+do shell script "rm -rf '$MKCERT_CAROOT'" with administrator privileges
+EOF
+  fi
+fi
+
 # 2. Install local CA into the user's login keychain.
 #    macOS may show a single keychain-unlock prompt the first time.
 echo "🔐 Installing mkcert local CA into your login keychain..."
