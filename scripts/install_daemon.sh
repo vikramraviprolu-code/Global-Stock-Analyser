@@ -23,25 +23,36 @@ LABEL="com.equityscope.global"
 DEST="/usr/local/global-stock-analyser"
 PLIST_DEST="/Library/LaunchDaemons/${LABEL}.plist"
 
-# 1. Mirror staged project to /usr/local
+# 1. Mirror staged project to /usr/local (preserve venv/ and certs/ between installs)
 echo "📦 Installing to $DEST"
 mkdir -p "$DEST"
 rsync -a --delete \
       --exclude '.git' --exclude '__pycache__' --exclude 'tests' \
-      --exclude '*.command' --exclude 'certs' \
+      --exclude '*.command' --exclude 'certs' --exclude 'venv' \
       "$STAGE/" "$DEST/"
 chmod +x "$DEST/scripts/"*.sh 2>/dev/null || true
+chown -R root:wheel "$DEST"
 
-# 2. Resolve python interpreter and install Python deps if missing
-PYTHON="$(command -v python3 || true)"
-if [[ -z "$PYTHON" ]]; then
+# 2. Build a self-contained virtualenv inside DEST so the daemon doesn't depend
+#    on user-site packages (which root can't see) and survives Python upgrades.
+SYSTEM_PYTHON="$(command -v python3 || true)"
+if [[ -z "$SYSTEM_PYTHON" ]]; then
   echo "❌ python3 not found in PATH"
   exit 1
 fi
-if ! "$PYTHON" -c "import flask, pandas, requests, yfinance" >/dev/null 2>&1; then
-  echo "📦 Installing Python deps..."
-  "$PYTHON" -m pip install --quiet -r "$DEST/requirements.txt"
+VENV="$DEST/venv"
+PYTHON="$VENV/bin/python"
+if [[ ! -x "$PYTHON" ]]; then
+  echo "🐍 Creating venv at $VENV"
+  "$SYSTEM_PYTHON" -m venv "$VENV"
 fi
+echo "📦 Installing Python deps into venv"
+"$PYTHON" -m pip install --quiet --upgrade pip
+"$PYTHON" -m pip install --quiet -r "$DEST/requirements.txt"
+"$PYTHON" -c "import flask, pandas, requests, yfinance" || {
+  echo "❌ Dependency install failed"
+  exit 1
+}
 
 # 3. Generate self-signed cert if missing
 mkdir -p "$DEST/certs"

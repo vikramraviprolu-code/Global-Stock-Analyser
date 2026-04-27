@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.6.2] - 2026-04-27
+
+### Fixed
+- **Daemon crashed with `ModuleNotFoundError: No module named 'flask'`.**
+  The plist pointed at `/usr/bin/python3` (system Python), whose user-site
+  packages aren't visible to root. Daemon entered a KeepAlive crashloop.
+- The installer now creates a self-contained virtualenv at
+  `/usr/local/global-stock-analyser/venv` and installs project deps inside
+  it. The plist's `ProgramArguments[0]` is rewritten to that venv's
+  `python`, so the daemon no longer depends on user-site packages or
+  system Python upgrades.
+- `chown -R root:wheel` on `/usr/local/global-stock-analyser` after rsync
+  so the install dir is fully root-owned (previous partial runs had left
+  user-owned dirs behind).
+- rsync now `--exclude venv` and `--exclude certs` so reinstall preserves
+  these between runs.
+
 ## [0.6.1] - 2026-04-27
 
 ### Fixed
