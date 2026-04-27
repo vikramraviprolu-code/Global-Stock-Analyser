@@ -79,20 +79,36 @@ No API keys required. Data sourced from Stooq (CSV) with yfinance fallback.
 
 Run the app like any web service. After a one-time install, just type
 **https://Global-Stock-Analyser/Local** in any browser — the server is
-already there, no Terminal, no double-click, no relaunching.
+always there, no Terminal, no double-click, no relaunching, **green padlock,
+no certificate warnings**.
 
 **Install (one-time):**
 
 1. In Finder, double-click **`Install-Browser-Mode.command`**
-2. macOS shows a native password dialog. Enter your Mac password.
-3. Browser opens automatically at https://Global-Stock-Analyser/Local
-4. Done. Bookmark the URL.
+2. (If a prior install left orphaned files) one quick admin prompt to clean up
+3. Optional macOS keychain unlock prompt — adds the local CA to your login keychain
+4. macOS native password dialog — installs the LaunchDaemon (port 443 + plist)
+5. Browser opens automatically at https://Global-Stock-Analyser/Local
+6. Bookmark the URL
 
-What this installs: a macOS LaunchDaemon that runs the Flask server as
-root on port 443 with TLS, auto-starts at boot, and auto-restarts on
-crash. Logs at `/var/log/global-stock-analyser.{out,err}.log`.
+**What gets installed:**
 
-**Uninstall:** double-click **`Uninstall-Browser-Mode.command`**.
+- A macOS **LaunchDaemon** at `/Library/LaunchDaemons/com.equityscope.global.plist`
+  that runs the Flask server as root on port 443 with TLS, auto-starts at boot,
+  and auto-restarts on crash.
+- The project tree is mirrored to `/usr/local/global-stock-analyser/` (outside iCloud
+  to avoid macOS TCC restrictions).
+- A self-contained **virtualenv** at `/usr/local/global-stock-analyser/venv/`
+  with all Python dependencies — independent of system Python upgrades.
+- A **mkcert** local Certificate Authority is installed into your login keychain,
+  and a leaf cert covering `Global-Stock-Analyser`, `localhost`, `127.0.0.1` is
+  issued from it. Browsers accept it natively — no warnings, no "Advanced →
+  Proceed" detour.
+- Logs at `/var/log/global-stock-analyser.{out,err}.log`.
+
+**Uninstall:** double-click **`Uninstall-Browser-Mode.command`** — stops the
+daemon, removes `/usr/local/global-stock-analyser`, removes the mkcert CA from
+your keychain.
 
 ### Manual mode (server only when you want it)
 

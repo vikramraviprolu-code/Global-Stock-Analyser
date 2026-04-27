@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Only the latest `main` branch receives security fixes. Pin a tagged release if you need stability.
+Only the latest `main` branch receives security fixes. Pin a tagged release if you need stability. Latest: **v0.6.7**.
 
 ## Reporting a vulnerability
 
@@ -11,6 +11,17 @@ Only the latest `main` branch receives security fixes. Pin a tagged release if y
 1. Email a detailed report to the repository owner via GitHub (use the "Report a vulnerability" tab on the Security page of this repo).
 2. Include reproduction steps, affected version/commit, and suggested mitigation if known.
 3. Allow up to 7 days for an initial response.
+
+## Hardening applied in v0.6.x
+
+| Threat | Mitigation |
+| --- | --- |
+| **Self-signed cert warnings + bypass-able UX** | mkcert local CA installed into the user's login keychain; leaf cert signed by that CA. Browsers show a green padlock with no warnings and no "Advanced → Proceed" path. |
+| **Plaintext HSTS pin trapping users** | HSTS removed (v0.6.4). Combined with a self-signed cert, HSTS produced a dead-end Chrome warning; with mkcert there's no warning, so HSTS isn't needed for local use. |
+| **Daemon import-time secret leakage / crashloop** | Daemon now runs from a pinned virtualenv inside `/usr/local/global-stock-analyser/venv` rather than the system Python's user-site, isolating the runtime from user-mutable code paths. |
+| **Idle resource consumption (manual mode)** | Heartbeat + `beforeunload` `sendBeacon` cause the manual-launch server to exit ~45 s after the last tab closes. Browser-only mode disables idle exit (LaunchDaemon's job). |
+| **Privileged install reading iCloud Drive** | Installer stages project to `/tmp/equityscope_stage_*`, then runs the elevated step from `/tmp` — sidesteps macOS TCC restrictions on iCloud-resident scripts. |
+| **Orphan trust dirs from prior installs** | Installer detects root-owned `~/Library/Application Support/mkcert` from earlier failed runs and removes it before re-running mkcert as the user. |
 
 ## Hardening applied in v0.4.0
 
