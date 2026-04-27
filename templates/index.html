@@ -111,6 +111,22 @@ const flagOf = (country) => ({
   "Taiwan": "🇹🇼", "Singapore": "🇸🇬", "Australia": "🇦🇺", "China": "🇨🇳", "Canada": "🇨🇦",
 }[country] || "🌐");
 
+// HTML-escape any value before injecting via innerHTML. Defends against XSS
+// when fields like company/sector/industry come from third-party APIs.
+const esc = (s) => {
+  if (s == null) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+};
+
+// Module-scoped lookup tables — eliminates JSON-in-HTML attribute risk
+let _acCands = [];
+let _disambigCands = [];
+
 document.querySelectorAll(".tab").forEach((t) => {
   t.onclick = () => {
     document.querySelectorAll(".tab").forEach((x) => x.classList.remove("active"));
@@ -147,16 +163,19 @@ async function doAutocomplete(q) {
 }
 
 function showAutocomplete(cands) {
+  _acCands = cands;
   const ac = $("autocomplete");
-  ac.innerHTML = cands.map((c) => `
-    <div class="ac-item" data-listing='${JSON.stringify(c).replace(/'/g, "&#39;")}'>
-      <span class="ac-flag">${flagOf(c.country)}</span>
-      <div class="ac-main"><strong>${c.ticker}</strong> · ${c.company}</div>
-      <span class="ac-meta">${c.exchange} · ${c.currency}</span>
+  ac.innerHTML = cands.map((c, i) => `
+    <div class="ac-item" data-idx="${i}">
+      <span class="ac-flag">${esc(flagOf(c.country))}</span>
+      <div class="ac-main"><strong>${esc(c.ticker)}</strong> · ${esc(c.company)}</div>
+      <span class="ac-meta">${esc(c.exchange)} · ${esc(c.currency)}</span>
     </div>`).join("");
   ac.querySelectorAll(".ac-item").forEach((el) => {
     el.onclick = () => {
-      const c = JSON.parse(el.dataset.listing.replace(/&#39;/g, "'"));
+      const idx = parseInt(el.dataset.idx, 10);
+      const c = _acCands[idx];
+      if (!c) return;
       $("query").value = c.ticker;
       hideAutocomplete();
       runAnalyze(c);
@@ -190,19 +209,22 @@ async function handleAnalyze() {
 }
 
 function showDisambig(cands) {
+  _disambigCands = cands;
   const list = $("disambig-list");
-  list.innerHTML = cands.map((c) => `
-    <div class="disambig-item" data-listing='${JSON.stringify(c).replace(/'/g, "&#39;")}'>
-      <div class="ac-flag">${flagOf(c.country)}</div>
+  list.innerHTML = cands.map((c, i) => `
+    <div class="disambig-item" data-idx="${i}">
+      <div class="ac-flag">${esc(flagOf(c.country))}</div>
       <div class="disambig-main">
-        <div><strong>${c.ticker}</strong> — ${c.company}</div>
-        <div class="muted" style="font-size: 12px;">${c.exchange} · ${c.country} · ${c.currency}${c.industry ? " · " + c.industry : ""}</div>
+        <div><strong>${esc(c.ticker)}</strong> — ${esc(c.company)}</div>
+        <div class="muted" style="font-size: 12px;">${esc(c.exchange)} · ${esc(c.country)} · ${esc(c.currency)}${c.industry ? " · " + esc(c.industry) : ""}</div>
       </div>
       <button class="btn-pick">Select →</button>
     </div>`).join("");
   list.querySelectorAll(".disambig-item").forEach((el) => {
     el.onclick = () => {
-      const c = JSON.parse(el.dataset.listing.replace(/&#39;/g, "'"));
+      const idx = parseInt(el.dataset.idx, 10);
+      const c = _disambigCands[idx];
+      if (!c) return;
       $("disambig-modal").classList.add("hidden");
       runAnalyze(c);
     };
@@ -240,7 +262,7 @@ async function runAnalyze(listing) {
 }
 
 function render(d) {
-  $("freshness-header").innerHTML = `<span class="freshness-tag">${d.freshness} · ${d.input.last_date || "—"} · ${d.input.exchange}</span>`;
+  $("freshness-header").innerHTML = `<span class="freshness-tag">${esc(d.freshness)} · ${esc(d.input.last_date || "—")} · ${esc(d.input.exchange)}</span>`;
   renderOverview(d);
   renderValue(d);
   renderMomentum(d);
@@ -253,40 +275,40 @@ function renderOverview(d) {
   const sym = i.currency_symbol;
   const ccy = i.currency;
   const fails = d.input_global_fails.length
-    ? `<span class="red">⚠️ Fails regional filter: ${d.input_global_fails.join(", ")}</span>`
-    : `<span class="green">✅ Passes all regional filters (${i.country})</span>`;
+    ? `<span class="red">⚠️ Fails regional filter: ${esc(d.input_global_fails.join(", "))}</span>`
+    : `<span class="green">✅ Passes all regional filters (${esc(i.country)})</span>`;
   const fxLine = d.fx_to_usd && ccy !== "USD"
-    ? `<div class="muted" style="font-size: 12px;">FX: 1 ${ccy} = $${d.fx_to_usd.toFixed(4)}</div>` : "";
+    ? `<div class="muted" style="font-size: 12px;">FX: 1 ${esc(ccy)} = $${Number(d.fx_to_usd).toFixed(4)}</div>` : "";
   const flt = d.regional_filter;
   $("overview").innerHTML = `
     <div class="card">
-      <h2>${flagOf(i.country)} ${i.company} <span class="muted" style="font-weight: 400;">(${i.ticker})</span></h2>
-      <div class="muted">${i.exchange} · ${i.country} · ${i.region} · ${ccy} · ${i.sector || "Sector unavailable"} · ${i.industry || "Industry unavailable"}</div>
+      <h2>${esc(flagOf(i.country))} ${esc(i.company)} <span class="muted" style="font-weight: 400;">(${esc(i.ticker)})</span></h2>
+      <div class="muted">${esc(i.exchange)} · ${esc(i.country)} · ${esc(i.region)} · ${esc(ccy)} · ${esc(i.sector || "Sector unavailable")} · ${esc(i.industry || "Industry unavailable")}</div>
       ${fxLine}
       <div style="margin-top: 12px;">${fails}</div>
       <div class="muted" style="font-size: 11px; margin-top: 6px;">
-        Regional filter: price ≥ ${sym}${flt.min_price}, vol ≥ ${flt.min_volume.toLocaleString()}, mcap ≥ $${(flt.min_mcap_usd/1e9).toFixed(0)}B USD
+        Regional filter: price ≥ ${esc(sym)}${Number(flt.min_price)}, vol ≥ ${Number(flt.min_volume).toLocaleString()}, mcap ≥ $${(Number(flt.min_mcap_usd)/1e9).toFixed(0)}B USD
       </div>
       <div class="grid" style="margin-top: 16px;">
-        <div class="metric"><div class="label">Price</div><div class="value">${fmtPrice(i.price, sym, ccy)}</div></div>
-        <div class="metric"><div class="label">52W High</div><div class="value">${fmtPrice(i.high_52w, sym, ccy)}</div></div>
-        <div class="metric"><div class="label">52W Low</div><div class="value">${fmtPrice(i.low_52w, sym, ccy)}</div></div>
+        <div class="metric"><div class="label">Price</div><div class="value">${esc(fmtPrice(i.price, sym, ccy))}</div></div>
+        <div class="metric"><div class="label">52W High</div><div class="value">${esc(fmtPrice(i.high_52w, sym, ccy))}</div></div>
+        <div class="metric"><div class="label">52W Low</div><div class="value">${esc(fmtPrice(i.low_52w, sym, ccy))}</div></div>
         <div class="metric"><div class="label">% From Low</div><div class="value ${cls(i.pct_from_low)}">${fmtPct(i.pct_from_low)}</div></div>
         <div class="metric"><div class="label">5D Perf</div><div class="value ${cls(i.perf_5d)}">${arrow(i.perf_5d)} ${fmtPct(i.perf_5d)}</div></div>
         <div class="metric"><div class="label">RSI 14</div><div class="value">${fmtNum(i.rsi_14, 1)}</div></div>
         <div class="metric"><div class="label">ROC 14</div><div class="value ${cls(i.roc_14)}">${fmtPct(i.roc_14)}</div></div>
         <div class="metric"><div class="label">ROC 21</div><div class="value ${cls(i.roc_21)}">${fmtPct(i.roc_21)}</div></div>
-        <div class="metric"><div class="label">20D MA</div><div class="value">${fmtPrice(i.ma_20, sym, ccy)}</div></div>
-        <div class="metric"><div class="label">50D MA</div><div class="value">${fmtPrice(i.ma_50, sym, ccy)}</div></div>
-        <div class="metric"><div class="label">200D MA</div><div class="value">${fmtPrice(i.ma_200, sym, ccy)}</div></div>
+        <div class="metric"><div class="label">20D MA</div><div class="value">${esc(fmtPrice(i.ma_20, sym, ccy))}</div></div>
+        <div class="metric"><div class="label">50D MA</div><div class="value">${esc(fmtPrice(i.ma_50, sym, ccy))}</div></div>
+        <div class="metric"><div class="label">200D MA</div><div class="value">${esc(fmtPrice(i.ma_200, sym, ccy))}</div></div>
         <div class="metric"><div class="label">Avg Vol (20D)</div><div class="value">${fmtVol(i.avg_volume)}</div></div>
-        <div class="metric"><div class="label">Market Cap</div><div class="value">${fmtMcapBoth(i.market_cap, i.market_cap_usd, sym)}</div></div>
+        <div class="metric"><div class="label">Market Cap</div><div class="value">${esc(fmtMcapBoth(i.market_cap, i.market_cap_usd, sym))}</div></div>
         <div class="metric"><div class="label">Trailing P/E</div><div class="value">${fmtNum(i.trailing_pe, 2)}</div></div>
       </div>
     </div>
     <div class="card">
       <h2>Peer Universe</h2>
-      <div>Found <strong>${d.peer_count}</strong> enriched peers (out of ${d.peer_total_in_universe} matched). Tier: <strong>${d.peer_tier}</strong>.</div>
+      <div>Found <strong>${Number(d.peer_count) || 0}</strong> enriched peers (out of ${Number(d.peer_total_in_universe) || 0} matched). Tier: <strong>${esc(d.peer_tier)}</strong>.</div>
       <div class="muted" style="margin-top: 8px; font-size: 12px;">Tiered match: industry+country → industry+region → sector+country → sector+region → global industry → global sector.</div>
     </div>`;
 }
@@ -294,25 +316,25 @@ function renderOverview(d) {
 function renderValue(d) {
   const rows = d.value_hits.map((p) => `
     <tr>
-      <td>${flagOf(p.country)} ${p.company}</td>
-      <td><strong>${p.ticker}</strong></td>
-      <td class="num">${fmtPrice(p.price, p.currency_symbol, p.currency)}</td>
-      <td class="num">${fmtPrice(p.low_52w, p.currency_symbol, p.currency)}</td>
+      <td>${esc(flagOf(p.country))} ${esc(p.company)}</td>
+      <td><strong>${esc(p.ticker)}</strong></td>
+      <td class="num">${esc(fmtPrice(p.price, p.currency_symbol, p.currency))}</td>
+      <td class="num">${esc(fmtPrice(p.low_52w, p.currency_symbol, p.currency))}</td>
       <td class="num green">${fmtPct(p.pct_from_low)}</td>
       <td class="num">${fmtNum(p.trailing_pe, 1)}</td>
-      <td class="num">${fmtMcapBoth(p.market_cap, p.market_cap_usd, p.currency_symbol)}</td>
+      <td class="num">${esc(fmtMcapBoth(p.market_cap, p.market_cap_usd, p.currency_symbol))}</td>
       <td class="num">${fmtVol(p.avg_volume)}</td>
-      <td>${p.country}</td>
-      <td>${p.industry || "—"}</td>
+      <td>${esc(p.country)}</td>
+      <td>${esc(p.industry || "—")}</td>
     </tr>`).join("");
   const i = d.input;
   const qualifiesNote = d.input_value_qualifies
-    ? `<div class="green">✅ ${i.ticker} qualifies for the value screen.</div>`
-    : `<div class="yellow">⚠️ ${i.ticker} does NOT qualify (within 10% low: ${i.pct_from_low != null && i.pct_from_low <= 10 ? "yes" : "no"}; P/E ≤ 10: ${i.trailing_pe && i.trailing_pe <= 10 && i.trailing_pe > 0 ? "yes" : "no"}).</div>`;
+    ? `<div class="green">✅ ${esc(i.ticker)} qualifies for the value screen.</div>`
+    : `<div class="yellow">⚠️ ${esc(i.ticker)} does NOT qualify (within 10% low: ${i.pct_from_low != null && i.pct_from_low <= 10 ? "yes" : "no"}; P/E ≤ 10: ${i.trailing_pe && i.trailing_pe <= 10 && i.trailing_pe > 0 ? "yes" : "no"}).</div>`;
   const trends = [];
   if (i.pct_from_low != null && i.pct_from_low <= 10) trends.push("Trading near 52W low — historically a value entry zone.");
   if (i.trailing_pe && i.trailing_pe <= 10) trends.push(`Trailing P/E of ${i.trailing_pe.toFixed(1)}x is below the 10x threshold.`);
-  if (i.peer_median_pe && i.trailing_pe) trends.push(`Peer median P/E ≈ ${i.peer_median_pe.toFixed(1)}x vs ${i.trailing_pe.toFixed(1)}x for ${i.ticker}.`);
+  if (i.peer_median_pe && i.trailing_pe) trends.push(`Peer median P/E ≈ ${i.peer_median_pe.toFixed(1)}x vs ${i.trailing_pe.toFixed(1)}x for ${esc(i.ticker)}.`);
   if (!trends.length) trends.push("No standout valuation trend at current levels.");
   const risks = ["Value traps: low P/E may reflect deteriorating fundamentals.", "Sector cyclicality and earnings revisions can re-rate multiples.", "Cross-border peers face FX and regulatory differences."];
   $("value").innerHTML = `
@@ -324,8 +346,8 @@ function renderValue(d) {
         <th class="num">% From Low</th><th class="num">Trailing P/E</th><th class="num">Market Cap</th>
         <th class="num">Avg Vol</th><th>Country</th><th>Industry</th>
       </tr></thead><tbody>${rows}</tbody></table>` : `<div class="muted">No peers qualified the value screen.</div>`}
-      <h3>Valuation Trends</h3><ul class="clean">${trends.map((t) => `<li>${t}</li>`).join("")}</ul>
-      <h3>Risks</h3><ul class="clean">${risks.map((t) => `<li>${t}</li>`).join("")}</ul>
+      <h3>Valuation Trends</h3><ul class="clean">${trends.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
+      <h3>Risks</h3><ul class="clean">${risks.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
     </div>`;
 }
 
@@ -335,19 +357,19 @@ function renderMomentum(d) {
     const outClass = p.outlook === "Bullish" ? "green" : p.outlook === "Bearish" ? "red" : "muted";
     return `<tr>
       <td>${idx + 1}</td>
-      <td>${flagOf(p.country)} ${p.company}</td>
-      <td><strong>${p.ticker}</strong></td>
+      <td>${esc(flagOf(p.country))} ${esc(p.company)}</td>
+      <td><strong>${esc(p.ticker)}</strong></td>
       <td class="num ${cls(p.perf_5d)}">${arrow(p.perf_5d)} ${fmtPct(p.perf_5d)}</td>
       <td class="num ${cls(p.roc_14)}">${fmtPct(p.roc_14)}</td>
       <td class="num ${cls(p.roc_21)}">${fmtPct(p.roc_21)}</td>
       <td class="num">${fmtNum(p.rsi_14, 1)}</td>
-      <td>${p.rsi_label}</td>
-      <td class="num ${cls(p.vs_ma_20)}">${p.vs_ma_20_label}</td>
-      <td class="num ${cls(p.vs_ma_50)}">${p.vs_ma_50_label}</td>
-      <td class="num ${cls(p.vs_ma_200)}">${p.vs_ma_200_label}</td>
-      <td class="${sigClass}">${p.signal}</td>
-      <td class="${outClass}">${p.outlook}</td>
-      <td>${p.confidence}</td>
+      <td>${esc(p.rsi_label)}</td>
+      <td class="num ${cls(p.vs_ma_20)}">${esc(p.vs_ma_20_label)}</td>
+      <td class="num ${cls(p.vs_ma_50)}">${esc(p.vs_ma_50_label)}</td>
+      <td class="num ${cls(p.vs_ma_200)}">${esc(p.vs_ma_200_label)}</td>
+      <td class="${sigClass}">${esc(p.signal)}</td>
+      <td class="${outClass}">${esc(p.outlook)}</td>
+      <td>${esc(p.confidence)}</td>
     </tr>`;
   }).join("");
   $("momentum").innerHTML = `
@@ -368,8 +390,8 @@ function renderCross(d) {
     return;
   }
   const rows = d.cross.map((p) => `
-    <tr><td><strong>${p.ticker}</strong></td><td>${flagOf(p.country)} ${p.company}</td>
-    <td class="num">${fmtPrice(p.price, p.currency_symbol, p.currency)}</td>
+    <tr><td><strong>${esc(p.ticker)}</strong></td><td>${esc(flagOf(p.country))} ${esc(p.company)}</td>
+    <td class="num">${esc(fmtPrice(p.price, p.currency_symbol, p.currency))}</td>
     <td class="num green">${fmtPct(p.pct_from_low)}</td>
     <td class="num">${fmtNum(p.trailing_pe, 1)}</td>
     <td class="num green">${fmtPct(p.perf_5d)}</td><td class="num">${fmtNum(p.rsi_14, 1)}</td></tr>`).join("");
@@ -390,21 +412,23 @@ function renderRecommendation(d) {
   const i = d.input;
   const sym = i.currency_symbol;
   const ccy = i.currency;
-  const recCls = s.recommendation.toLowerCase();
-  const list = (arr) => `<ul class="clean">${arr.map((x) => `<li>${x}</li>`).join("")}</ul>`;
+  const allowedRec = ["buy", "watch", "avoid"];
+  const recRaw = String(s.recommendation || "").toLowerCase();
+  const recCls = allowedRec.includes(recRaw) ? recRaw : "neutral";
+  const list = (arr) => `<ul class="clean">${arr.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
   $("recommendation").innerHTML = `
     <div class="card">
-      <h2>${flagOf(i.country)} ${i.ticker} — Final Recommendation</h2>
+      <h2>${esc(flagOf(i.country))} ${esc(i.ticker)} — Final Recommendation</h2>
       <div class="flex-row" style="align-items: center; margin-top: 8px;">
-        <div><span class="pill ${recCls}">${s.recommendation}</span></div>
-        <div>Confidence: <strong>${s.confidence}</strong></div>
-        <div>Time Horizon: <strong>${n.horizon}</strong></div>
+        <div><span class="pill ${recCls}">${esc(s.recommendation)}</span></div>
+        <div>Confidence: <strong>${esc(s.confidence)}</strong></div>
+        <div>Time Horizon: <strong>${esc(n.horizon)}</strong></div>
       </div>
       <div class="score-row">
-        <div class="score-box"><div class="label">Value Score</div><div class="score green">${s.value_score} / 4</div></div>
-        <div class="score-box"><div class="label">Momentum Score</div><div class="score green">${s.momentum_score} / 7</div></div>
-        <div class="score-box"><div class="label">Penalties</div><div class="score red">-${s.penalties}</div></div>
-        <div class="score-box"><div class="label">Total</div><div class="score">${s.total_score}</div></div>
+        <div class="score-box"><div class="label">Value Score</div><div class="score green">${Number(s.value_score) || 0} / 4</div></div>
+        <div class="score-box"><div class="label">Momentum Score</div><div class="score green">${Number(s.momentum_score) || 0} / 7</div></div>
+        <div class="score-box"><div class="label">Penalties</div><div class="score red">-${Number(s.penalties) || 0}</div></div>
+        <div class="score-box"><div class="label">Total</div><div class="score">${Number(s.total_score) || 0}</div></div>
       </div>
       <h3>Score Breakdown (transparent)</h3>
       <div class="flex-row">
@@ -412,16 +436,16 @@ function renderRecommendation(d) {
         <div><strong>Momentum</strong>${s.momentum_breakdown.length ? list(s.momentum_breakdown) : '<div class="muted">No momentum points triggered.</div>'}</div>
         <div><strong>Penalties</strong>${s.penalty_breakdown.length ? list(s.penalty_breakdown) : '<div class="muted">No penalties.</div>'}</div>
       </div>
-      ${s.missing_data.length ? `<div class="disclaimer" style="border-left-color: var(--yellow);">⚠️ Missing data: ${s.missing_data.join(", ")} — confidence reduced.</div>` : ""}
+      ${s.missing_data.length ? `<div class="disclaimer" style="border-left-color: var(--yellow);">⚠️ Missing data: ${esc(s.missing_data.join(", "))} — confidence reduced.</div>` : ""}
     </div>
     <div class="card">
       <h2>Snapshot</h2>
       <table>
-        <tr><th>Ticker</th><td>${i.ticker}</td><th>Price</th><td>${fmtPrice(i.price, sym, ccy)}</td></tr>
-        <tr><th>Exchange</th><td>${i.exchange}</td><th>Country</th><td>${flagOf(i.country)} ${i.country}</td></tr>
-        <tr><th>Sector</th><td>${i.sector || "—"}</td><th>Industry</th><td>${i.industry || "—"}</td></tr>
-        <tr><th>Market Cap</th><td>${fmtMcapBoth(i.market_cap, i.market_cap_usd, sym)}</td><th>Trailing P/E</th><td>${fmtNum(i.trailing_pe, 2)}</td></tr>
-        <tr><th>52W Range</th><td>${fmtPrice(i.low_52w, sym, ccy)} – ${fmtPrice(i.high_52w, sym, ccy)}</td><th>RSI 14</th><td>${fmtNum(i.rsi_14, 1)} (${i.rsi_14 > 70 ? "Overbought" : i.rsi_14 < 30 ? "Oversold" : "Neutral"})</td></tr>
+        <tr><th>Ticker</th><td>${esc(i.ticker)}</td><th>Price</th><td>${esc(fmtPrice(i.price, sym, ccy))}</td></tr>
+        <tr><th>Exchange</th><td>${esc(i.exchange)}</td><th>Country</th><td>${esc(flagOf(i.country))} ${esc(i.country)}</td></tr>
+        <tr><th>Sector</th><td>${esc(i.sector || "—")}</td><th>Industry</th><td>${esc(i.industry || "—")}</td></tr>
+        <tr><th>Market Cap</th><td>${esc(fmtMcapBoth(i.market_cap, i.market_cap_usd, sym))}</td><th>Trailing P/E</th><td>${fmtNum(i.trailing_pe, 2)}</td></tr>
+        <tr><th>52W Range</th><td>${esc(fmtPrice(i.low_52w, sym, ccy))} – ${esc(fmtPrice(i.high_52w, sym, ccy))}</td><th>RSI 14</th><td>${fmtNum(i.rsi_14, 1)} (${i.rsi_14 > 70 ? "Overbought" : i.rsi_14 < 30 ? "Oversold" : "Neutral"})</td></tr>
       </table>
     </div>
     <div class="flex-row">
@@ -436,11 +460,14 @@ function renderRecommendation(d) {
     </div>`;
 }
 
-// Auto-prefill from landing page
+// Auto-prefill from landing page — sanitize untrusted query string
 const urlTicker = new URLSearchParams(window.location.search).get("ticker");
 if (urlTicker) {
-  $("query").value = urlTicker.toUpperCase();
-  setTimeout(handleAnalyze, 100);
+  const safe = urlTicker.toUpperCase().replace(/[^A-Z0-9.\-&]/g, "").slice(0, 16);
+  if (safe) {
+    $("query").value = safe;
+    setTimeout(handleAnalyze, 100);
+  }
 }
 </script>
 </body>

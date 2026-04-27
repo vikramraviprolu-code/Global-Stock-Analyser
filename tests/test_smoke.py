@@ -98,3 +98,59 @@ def test_score_avoid_signal():
 def test_suffix_map_completeness():
     expected_suffixes = {"NS", "BO", "L", "DE", "PA", "SW", "T", "HK", "KS", "TW", "SI", "AX", "SS"}
     assert expected_suffixes.issubset(SUFFIX_MAP.keys())
+
+
+# Security tests
+
+from app import TICKER_RE, _sanitize_optional, app as flask_app
+
+
+def test_ticker_regex_accepts_valid():
+    valid = ["AAPL", "MSFT", "BRK-B", "RELIANCE.NS", "0700.HK", "VOLV-B.ST", "005930.KS", "7203.T", "BMW.DE"]
+    for t in valid:
+        assert TICKER_RE.match(t), f"should accept {t}"
+
+
+def test_ticker_regex_rejects_malicious():
+    bad = [
+        "<script>alert(1)</script>",
+        "AAPL'; DROP TABLE users--",
+        "AAPL\x00",
+        "AAPL/../../etc/passwd",
+        "AAPL OR 1=1",
+        "AAPL\nMSFT",
+        "javascript:alert(1)",
+        "",
+        "A" * 50,
+    ]
+    for t in bad:
+        assert not TICKER_RE.match(t), f"should reject {t!r}"
+
+
+def test_sanitize_optional_drops_unsafe():
+    assert _sanitize_optional(None) is None
+    assert _sanitize_optional("") is None
+    assert _sanitize_optional("<script>") is None
+    assert _sanitize_optional("Apple Inc.") == "Apple Inc."
+    assert _sanitize_optional("a" * 200) is None
+
+
+def test_security_headers_present():
+    client = flask_app.test_client()
+    resp = client.get("/")
+    assert resp.headers.get("X-Content-Type-Options") == "nosniff"
+    assert resp.headers.get("X-Frame-Options") == "DENY"
+    assert "frame-ancestors 'none'" in resp.headers.get("Content-Security-Policy", "")
+
+
+def test_analyze_rejects_invalid_ticker():
+    client = flask_app.test_client()
+    resp = client.post("/api/analyze", json={"ticker": "<script>"})
+    assert resp.status_code == 400
+    assert "Invalid" in resp.get_json()["error"]
+
+
+def test_search_rejects_control_chars():
+    client = flask_app.test_client()
+    resp = client.get("/api/search?q=foo%00bar")
+    assert resp.status_code == 400
