@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.6.5] - 2026-04-27
+
+### Added
+- **mkcert integration** — installer now downloads the
+  [mkcert](https://github.com/FiloSottile/mkcert) standalone binary and uses
+  it to install a local Certificate Authority into the macOS System
+  keychain, then issue a leaf cert signed by that CA. Result: browsers
+  show a green padlock with no warnings, no bypass needed. mkcert binary
+  is cached at `/usr/local/global-stock-analyser/bin/mkcert`.
+- Falls back to `openssl` self-signed + `security add-trusted-cert` if
+  the mkcert download fails (no network / GitHub down).
+- Uninstaller now runs `mkcert -uninstall` to remove the local CA from
+  the trust store before deleting the project tree.
+
+### Why mkcert vs raw self-signed
+- Self-signed certs added to System keychain trust still trip browser
+  policy in many Chrome configurations. mkcert generates a real CA,
+  which is the canonical way to get a trusted cert for a local
+  hostname without a public DNS / ACME path.
+
 ## [0.6.4] - 2026-04-27
 
 ### Fixed
