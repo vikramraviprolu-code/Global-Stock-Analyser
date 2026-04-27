@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Remove the always-on macOS LaunchDaemon.
+# Remove the always-on macOS LaunchDaemon and clean up /usr/local install.
 set -euo pipefail
 
 LABEL="com.equityscope.global"
 PLIST_DEST="/Library/LaunchDaemons/${LABEL}.plist"
+DEST="/usr/local/global-stock-analyser"
 
 if [[ $EUID -ne 0 ]]; then
   echo "❌ Must run as root."
@@ -20,5 +21,11 @@ if [[ -f "$PLIST_DEST" ]]; then
   echo "🗑️  Removed $PLIST_DEST"
 fi
 
+if [[ -d "$DEST" ]]; then
+  rm -rf "$DEST"
+  echo "🗑️  Removed $DEST"
+fi
+
 echo "✅ Browser auto-launch disabled."
-echo "   /etc/hosts and certs were left in place. Remove manually if desired."
+echo "   /etc/hosts entry left in place. Remove manually if desired:"
+echo "     sudo sed -i '' '/Global-Stock-Analyser/d' /etc/hosts"

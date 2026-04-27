@@ -1,75 +1,94 @@
 #!/usr/bin/env bash
 # Install the always-on macOS LaunchDaemon for browser-only access.
-# Requires sudo (called via osascript by Install-Browser-Mode.command).
+# Called as root via osascript from Install-Browser-Mode.command.
+#
+# Usage: install_daemon.sh <stage_dir>
+#   <stage_dir> contains a non-iCloud copy of the project (rsynced by the
+#   user-level launcher). Required because elevated processes are blocked
+#   by macOS TCC from reading iCloud Drive paths.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-LABEL="com.equityscope.global"
-PLIST_DEST="/Library/LaunchDaemons/${LABEL}.plist"
-TEMPLATE="$ROOT/scripts/${LABEL}.plist.template"
-
 if [[ $EUID -ne 0 ]]; then
-  echo "❌ Must run as root (use Install-Browser-Mode.command for GUI prompt)."
+  echo "❌ Must run as root."
   exit 1
 fi
 
-# Resolve a stable Python interpreter; prefer system Python3 then /usr/local then Homebrew.
+STAGE="${1:-}"
+if [[ -z "$STAGE" || ! -d "$STAGE" ]]; then
+  echo "❌ Missing stage directory argument."
+  exit 1
+fi
+
+LABEL="com.equityscope.global"
+DEST="/usr/local/global-stock-analyser"
+PLIST_DEST="/Library/LaunchDaemons/${LABEL}.plist"
+
+# 1. Mirror staged project to /usr/local
+echo "📦 Installing to $DEST"
+mkdir -p "$DEST"
+rsync -a --delete \
+      --exclude '.git' --exclude '__pycache__' --exclude 'tests' \
+      --exclude '*.command' --exclude 'certs' \
+      "$STAGE/" "$DEST/"
+chmod +x "$DEST/scripts/"*.sh 2>/dev/null || true
+
+# 2. Resolve python interpreter and install Python deps if missing
 PYTHON="$(command -v python3 || true)"
 if [[ -z "$PYTHON" ]]; then
   echo "❌ python3 not found in PATH"
   exit 1
 fi
-
-# Ensure required dependencies are installed for the resolved interpreter.
 if ! "$PYTHON" -c "import flask, pandas, requests, yfinance" >/dev/null 2>&1; then
-  echo "📦 Installing dependencies via $PYTHON ..."
-  "$PYTHON" -m pip install --quiet -r "$ROOT/requirements.txt"
+  echo "📦 Installing Python deps..."
+  "$PYTHON" -m pip install --quiet -r "$DEST/requirements.txt"
 fi
 
-# Ensure cert exists (run cert-gen as the invoking user, not root).
-if [[ ! -f "$ROOT/certs/cert.pem" || ! -f "$ROOT/certs/key.pem" ]]; then
+# 3. Generate self-signed cert if missing
+mkdir -p "$DEST/certs"
+if [[ ! -f "$DEST/certs/cert.pem" || ! -f "$DEST/certs/key.pem" ]]; then
   echo "🔒 Generating self-signed cert..."
-  if [[ -n "${SUDO_USER:-}" ]]; then
-    sudo -u "$SUDO_USER" bash "$ROOT/scripts/gen_cert.sh"
-  else
-    bash "$ROOT/scripts/gen_cert.sh"
-  fi
+  openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 365 \
+    -keyout "$DEST/certs/key.pem" -out "$DEST/certs/cert.pem" \
+    -subj "/CN=Global-Stock-Analyser" \
+    -addext "subjectAltName=DNS:Global-Stock-Analyser,DNS:localhost,IP:127.0.0.1" \
+    -addext "extendedKeyUsage=serverAuth" 2>/dev/null
+  chmod 600 "$DEST/certs/key.pem"
+  chmod 644 "$DEST/certs/cert.pem"
 fi
 
-# Ensure /etc/hosts entry.
+# 4. /etc/hosts mapping
 if ! grep -qiF "Global-Stock-Analyser" /etc/hosts; then
-  echo "" >> /etc/hosts
-  echo "# EquityScope local mapping" >> /etc/hosts
-  echo "127.0.0.1 Global-Stock-Analyser" >> /etc/hosts
+  printf "\n# EquityScope local mapping\n127.0.0.1 Global-Stock-Analyser\n" >> /etc/hosts
   echo "✅ Added /etc/hosts entry"
 fi
 
-# Render plist template.
-TMP_PLIST="$(mktemp)"
+# 5. Render plist
+TEMPLATE="$DEST/scripts/${LABEL}.plist.template"
+if [[ ! -f "$TEMPLATE" ]]; then
+  echo "❌ plist template missing at $TEMPLATE"
+  exit 1
+fi
 sed -e "s|__PYTHON__|${PYTHON}|g" \
-    -e "s|__PROJECT_ROOT__|${ROOT}|g" \
-    "$TEMPLATE" > "$TMP_PLIST"
+    -e "s|__PROJECT_ROOT__|${DEST}|g" \
+    "$TEMPLATE" > "$PLIST_DEST"
+chown root:wheel "$PLIST_DEST"
+chmod 644 "$PLIST_DEST"
 
-# Bootout existing if present.
+# 6. Bootstrap daemon (idempotent)
 if launchctl print "system/${LABEL}" >/dev/null 2>&1; then
-  echo "🔄 Removing existing daemon..."
+  echo "🔄 Replacing existing daemon..."
   launchctl bootout "system/${LABEL}" 2>/dev/null || true
 fi
-
-# Install + load.
-install -m 0644 -o root -g wheel "$TMP_PLIST" "$PLIST_DEST"
-rm -f "$TMP_PLIST"
-
 launchctl bootstrap system "$PLIST_DEST"
 launchctl enable "system/${LABEL}"
 launchctl kickstart -k "system/${LABEL}"
 
-# Wait for the server to actually accept HTTPS.
-echo -n "⏳ Waiting for server to come up"
+# 7. Wait for HTTPS readiness
+echo -n "⏳ Waiting for server"
 for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
   if curl -kfs --max-time 1 https://Global-Stock-Analyser/Local/ -o /dev/null; then
     echo ""
-    echo "✅ Daemon installed and serving https://Global-Stock-Analyser/Local"
+    echo "✅ Daemon serving https://Global-Stock-Analyser/Local"
     exit 0
   fi
   echo -n "."
@@ -78,5 +97,5 @@ done
 
 echo ""
 echo "⚠️  Daemon installed but did not respond within 15s."
-echo "    Check /var/log/global-stock-analyser.err.log"
+echo "    Logs: /var/log/global-stock-analyser.err.log"
 exit 1

@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.6.1] - 2026-04-27
+
+### Fixed
+- **iCloud TCC blocked daemon install.** macOS rejects elevated processes
+  (osascript-with-admin / sudo) that read scripts from
+  `~/Library/Mobile Documents/com~apple~CloudDocs/...`. Symptom:
+  `Operation not permitted (126)` when double-clicking
+  `Install-Browser-Mode.command`.
+- New install flow:
+  1. User-level `Install-Browser-Mode.command` rsyncs the project to
+     `/tmp/equityscope_stage_$$/` (no privilege issue with iCloud).
+  2. Copies `install_daemon.sh` to `/tmp` too.
+  3. osascript runs the `/tmp` install script with admin rights.
+  4. The install script copies the staged tree to
+     `/usr/local/global-stock-analyser/` and bootstraps the LaunchDaemon
+     pointing at that path — completely outside iCloud.
+- Uninstaller mirrors the staging flow and also removes
+  `/usr/local/global-stock-analyser`.
+
 ## [0.6.0] - 2026-04-27
 
 ### Added — Terminal-independent "browser-only" mode
