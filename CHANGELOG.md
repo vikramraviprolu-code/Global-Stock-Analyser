@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.7.0] - 2026-04-27
+
+### Security
+- **LAN exposure removed.** Daemon now binds `127.0.0.1` instead of
+  `0.0.0.0`. The hostname `Global-Stock-Analyser` resolves locally via
+  `/etc/hosts`, so the URL still works for the user — but no other
+  device on the Wi-Fi can reach the server. Closes a DoS vector where
+  any LAN attacker could have hammered `/api/shutdown`.
+- **CSRF defense on `/api/shutdown`.** Endpoint now requires both a
+  loopback peer (`request.remote_addr` is 127.0.0.0/8 or ::1) AND an
+  `Origin` / `Referer` header whose host is in `TRUSTED_HOSTS`. A
+  malicious cross-origin site (or curl without proper headers) gets
+  HTTP 403. Browser `beforeunload` beacons still work — they include
+  `Origin` automatically.
+- **Server header sanitised.** Replaces Werkzeug's
+  `Werkzeug/X.Y Python/Z.Z` banner with `Server: EquityScope`,
+  reducing fingerprinting surface for scanners.
+- New tests cover CSRF block, untrusted-Origin block, server-header
+  strip, and host-header allow-list.
+
+### Notes
+- The Werkzeug dev server still emits its own `Server` header before
+  ours; production (gunicorn) doesn't, so the dual header is a dev-mode
+  quirk only. Browsers use the last one (`EquityScope`).
+
 ## [0.6.7] - 2026-04-27
 
 ### Fixed

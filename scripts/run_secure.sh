@@ -7,7 +7,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP_HOSTNAME="${APP_HOSTNAME:-Global-Stock-Analyser}"
 PORT="${PORT:-443}"
 URL_PREFIX="${URL_PREFIX:-/Local}"
-HOST="${HOST:-0.0.0.0}"
+HOST="${HOST:-127.0.0.1}"
 
 # 1. Ensure certs exist
 if [[ ! -f "$ROOT/certs/cert.pem" || ! -f "$ROOT/certs/key.pem" ]]; then

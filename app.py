@@ -9,11 +9,13 @@ Environment variables (all optional):
     IDLE_TIMEOUT    seconds without a request before auto-shutdown (default 45)
     AUTO_SHUTDOWN   set to "0" to disable idle watcher (default enabled)
 """
+import ipaddress
 import os
 import re
 import ssl
 import threading
 import time
+from urllib.parse import urlparse
 from flask import Flask, render_template, request, jsonify
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from werkzeug.exceptions import NotFound
@@ -87,12 +89,39 @@ def _validate_host():
         return jsonify({"error": "Host not allowed."}), 400
 
 
+def _is_loopback(addr: str) -> bool:
+    """True if addr is a loopback IP (127.0.0.0/8 or ::1)."""
+    if not addr:
+        return False
+    try:
+        return ipaddress.ip_address(addr).is_loopback
+    except ValueError:
+        return False
+
+
+def _origin_is_trusted() -> bool:
+    """Check Origin or Referer against TRUSTED_HOSTS for CSRF protection."""
+    for header in ("Origin", "Referer"):
+        src = request.headers.get(header, "")
+        if not src:
+            continue
+        try:
+            host = urlparse(src).netloc.split(":")[0].lower()
+        except Exception:
+            continue
+        if host and host in TRUSTED_HOSTS:
+            return True
+    return False
+
+
 @app.after_request
 def _security_headers(resp):
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["X-Frame-Options"] = "DENY"
     resp.headers["Referrer-Policy"] = "no-referrer"
     resp.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    # Strip Werkzeug version banner from Server header (info-leak hardening).
+    resp.headers["Server"] = "EquityScope"
     # HSTS intentionally NOT set: this app uses a self-signed cert for a local
     # hostname. HSTS would lock the browser into refusing the cert without any
     # bypass option (chrome://net-internals/#hsts to clear). Keep TLS, drop HSTS.
@@ -146,7 +175,15 @@ def api_heartbeat():
 
 @app.route("/api/shutdown", methods=["POST"])
 def api_shutdown():
-    """Browser-triggered graceful shutdown (sent on beforeunload)."""
+    """Browser-triggered graceful shutdown (sent on beforeunload).
+
+    Security: requires loopback peer AND a trusted Origin/Referer to defend
+    against CSRF — a malicious cross-origin site cannot kill the daemon.
+    """
+    if not _is_loopback(request.remote_addr or ""):
+        return jsonify({"error": "Forbidden."}), 403
+    if not _origin_is_trusted():
+        return jsonify({"error": "Cross-origin shutdown blocked."}), 403
     threading.Timer(0.3, lambda: os._exit(0)).start()
     return ("", 204)
 

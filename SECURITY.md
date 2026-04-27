@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Only the latest `main` branch receives security fixes. Pin a tagged release if you need stability. Latest: **v0.6.7**.
+Only the latest `main` branch receives security fixes. Pin a tagged release if you need stability. Latest: **v0.7.0**.
 
 ## Reporting a vulnerability
 
@@ -11,6 +11,14 @@ Only the latest `main` branch receives security fixes. Pin a tagged release if y
 1. Email a detailed report to the repository owner via GitHub (use the "Report a vulnerability" tab on the Security page of this repo).
 2. Include reproduction steps, affected version/commit, and suggested mitigation if known.
 3. Allow up to 7 days for an initial response.
+
+## Hardening applied in v0.7.0
+
+| Threat | Mitigation |
+| --- | --- |
+| **LAN exposure / DoS via `/api/shutdown`** | Daemon now binds `127.0.0.1`, not `0.0.0.0`. The hostname resolves locally via `/etc/hosts`; no other device on the network can reach the server. |
+| **Cross-site shutdown (CSRF)** | `/api/shutdown` requires loopback peer AND `Origin`/`Referer` whose host is in `TRUSTED_HOSTS`. Cross-origin POSTs return HTTP 403. |
+| **Server fingerprinting** | `Server` header replaced with `EquityScope` (drops Werkzeug + Python version banner). |
 
 ## Hardening applied in v0.6.x
 

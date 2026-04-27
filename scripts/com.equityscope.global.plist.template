@@ -17,7 +17,7 @@
     <key>EnvironmentVariables</key>
     <dict>
         <key>HOST</key>
-        <string>0.0.0.0</string>
+        <string>127.0.0.1</string>
         <key>PORT</key>
         <string>443</string>
         <key>URL_PREFIX</key>

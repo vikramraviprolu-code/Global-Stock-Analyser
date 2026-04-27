@@ -154,3 +154,28 @@ def test_search_rejects_control_chars():
     client = flask_app.test_client()
     resp = client.get("/api/search?q=foo%00bar")
     assert resp.status_code == 400
+
+
+def test_shutdown_blocks_cross_origin():
+    """CSRF: shutdown without trusted Origin/Referer is forbidden."""
+    client = flask_app.test_client()
+    resp = client.post("/api/shutdown")
+    assert resp.status_code == 403
+
+
+def test_shutdown_blocks_untrusted_origin():
+    client = flask_app.test_client()
+    resp = client.post("/api/shutdown", headers={"Origin": "https://evil.example.com"})
+    assert resp.status_code == 403
+
+
+def test_server_header_stripped():
+    client = flask_app.test_client()
+    resp = client.get("/")
+    assert resp.headers.get("Server") == "EquityScope"
+
+
+def test_host_header_guard_rejects_unknown():
+    client = flask_app.test_client()
+    resp = client.get("/", headers={"Host": "evil.example.com"})
+    assert resp.status_code == 400
