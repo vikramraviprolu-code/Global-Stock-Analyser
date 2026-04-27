@@ -85,6 +85,14 @@ sed -e "s|__PYTHON__|${PYTHON}|g" \
 chown root:wheel "$PLIST_DEST"
 chmod 644 "$PLIST_DEST"
 
+# 5b. Trust the self-signed cert in the System keychain so browsers don't show
+#     NET::ERR_CERT_AUTHORITY_INVALID. Idempotent — overwrites prior trust entry.
+echo "🔐 Adding cert to System keychain trust store..."
+security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain \
+  "$DEST/certs/cert.pem" 2>/dev/null || \
+  echo "    (trust add returned non-zero — Chrome may still warn; click Advanced → Proceed)"
+
 # 6. Bootstrap daemon (idempotent)
 if launchctl print "system/${LABEL}" >/dev/null 2>&1; then
   echo "🔄 Replacing existing daemon..."

@@ -26,6 +26,11 @@ if [[ -d "$DEST" ]]; then
   echo "🗑️  Removed $DEST"
 fi
 
+# Remove cert from System keychain trust store (best effort)
+security delete-certificate -c "Global-Stock-Analyser" \
+  /Library/Keychains/System.keychain 2>/dev/null && \
+  echo "🗑️  Removed cert from System keychain" || true
+
 echo "✅ Browser auto-launch disabled."
 echo "   /etc/hosts entry left in place. Remove manually if desired:"
 echo "     sudo sed -i '' '/Global-Stock-Analyser/d' /etc/hosts"

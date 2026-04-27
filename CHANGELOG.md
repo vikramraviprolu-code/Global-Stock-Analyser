@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.6.3] - 2026-04-27
+
+### Fixed
+- **Browser blocked URL with `NET::ERR_CERT_AUTHORITY_INVALID`.** Self-signed
+  cert wasn't in the macOS trust store. Installer now runs:
+  `security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain`
+  on the generated cert, so Chrome / Safari / Firefox accept it without
+  warnings. Uninstaller removes it.
+- New double-click helper `Trust-Certificate.command` for users who already
+  installed but still see the warning — adds the existing cert to System
+  trust without reinstalling the daemon.
+
 ## [0.6.2] - 2026-04-27
 
 ### Fixed
