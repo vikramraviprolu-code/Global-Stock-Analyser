@@ -6,7 +6,7 @@ set -euo pipefail
 APP_HOSTNAME="${APP_HOSTNAME:-Global-Stock-Analyser}"
 ENTRY="127.0.0.1 ${APP_HOSTNAME}"
 
-if grep -qi "[[:space:]]${APP_HOSTNAME}\(\$\|[[:space:]]\)" /etc/hosts; then
+if grep -qiF "${APP_HOSTNAME}" /etc/hosts; then
   echo "✅ /etc/hosts already maps ${APP_HOSTNAME}"
   exit 0
 fi

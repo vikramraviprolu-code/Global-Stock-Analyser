@@ -15,8 +15,8 @@ if [[ ! -f "$ROOT/certs/cert.pem" || ! -f "$ROOT/certs/key.pem" ]]; then
   bash "$ROOT/scripts/gen_cert.sh"
 fi
 
-# 2. Verify hosts entry
-if ! grep -qi "[[:space:]]${APP_HOSTNAME}\(\$\|[[:space:]]\)" /etc/hosts; then
+# 2. Verify hosts entry (case-insensitive substring match — robust across grep flavors)
+if ! grep -qiF "${APP_HOSTNAME}" /etc/hosts; then
   echo "⚠️  /etc/hosts missing entry for ${APP_HOSTNAME}."
   echo "   Run: sudo bash $ROOT/scripts/setup_hosts.sh"
   exit 1
