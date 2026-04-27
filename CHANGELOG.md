@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.6.0] - 2026-04-27
+
+### Added — Terminal-independent "browser-only" mode
+- `Install-Browser-Mode.command` — double-click in Finder. macOS native
+  password dialog (osascript), then installs a system LaunchDaemon that
+  runs the HTTPS server on port 443 always-on. After install, opening
+  https://Global-Stock-Analyser/Local in any browser just works — no
+  Terminal, no relaunching.
+- `Uninstall-Browser-Mode.command` — companion uninstaller; bootouts
+  the daemon and removes the plist.
+- `scripts/install_daemon.sh` — renders plist template, installs deps
+  if missing, ensures /etc/hosts entry, generates cert, bootstraps
+  LaunchDaemon, waits for HTTPS readiness.
+- `scripts/uninstall_daemon.sh` — companion script.
+- `scripts/com.equityscope.global.plist.template` — plist template with
+  `__PYTHON__` and `__PROJECT_ROOT__` placeholders. Daemon runs with
+  `AUTO_SHUTDOWN=0` (always-on); manual mode via `.command` keeps the
+  idle-shutdown behaviour.
+
+### Modes summary
+- **Browser-only** (Install-Browser-Mode.command): always-on system daemon.
+- **Manual** (Global-Stock-Analyser.command): on-demand, idle auto-exit.
+- **Dev** (`python app.py` or `scripts/run_secure.sh`): same as manual.
+
 ## [0.5.0] - 2026-04-27
 
 ### Added

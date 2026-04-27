@@ -75,19 +75,34 @@ Open http://127.0.0.1:5050 — landing page. Click **Launch App** or hit `/app` 
 
 No API keys required. Data sourced from Stooq (CSV) with yfinance fallback.
 
-### One-click launch (recommended)
+### Browser-only mode (recommended — terminal-independent)
 
-After the one-time setup below, double-click **`Global-Stock-Analyser.command`**
-in Finder. macOS shows a native password dialog, the server starts in the
-background, and the browser opens automatically at
-**https://Global-Stock-Analyser/Local**.
+Run the app like any web service. After a one-time install, just type
+**https://Global-Stock-Analyser/Local** in any browser — the server is
+already there, no Terminal, no double-click, no relaunching.
 
-When you close the last browser tab, the server **auto-shuts down** within
-~45 seconds (or immediately on `beforeunload`). Re-launching reuses the
-running process if it's already up.
+**Install (one-time):**
 
-> Tip: drag `Global-Stock-Analyser.command` to your Dock or alias it to your
-> Desktop for one-click access.
+1. In Finder, double-click **`Install-Browser-Mode.command`**
+2. macOS shows a native password dialog. Enter your Mac password.
+3. Browser opens automatically at https://Global-Stock-Analyser/Local
+4. Done. Bookmark the URL.
+
+What this installs: a macOS LaunchDaemon that runs the Flask server as
+root on port 443 with TLS, auto-starts at boot, and auto-restarts on
+crash. Logs at `/var/log/global-stock-analyser.{out,err}.log`.
+
+**Uninstall:** double-click **`Uninstall-Browser-Mode.command`**.
+
+### Manual mode (server only when you want it)
+
+If you'd rather not run a permanent daemon, double-click
+**`Global-Stock-Analyser.command`** instead. This starts the server on
+demand (single password prompt), opens the browser, and **auto-shuts
+down ~45s after the last tab closes** via the heartbeat / `beforeunload`
+beacon.
+
+> Tip: drag either `.command` to your Dock or alias to your Desktop.
 
 ### Run securely as `https://Global-Stock-Analyser/Local`
 

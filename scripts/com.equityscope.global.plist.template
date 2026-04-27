@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.equityscope.global</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>__PYTHON__</string>
+        <string>__PROJECT_ROOT__/app.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>__PROJECT_ROOT__</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOST</key>
+        <string>0.0.0.0</string>
+        <key>PORT</key>
+        <string>443</string>
+        <key>URL_PREFIX</key>
+        <string>/Local</string>
+        <key>SSL_CERT</key>
+        <string>__PROJECT_ROOT__/certs/cert.pem</string>
+        <key>SSL_KEY</key>
+        <string>__PROJECT_ROOT__/certs/key.pem</string>
+        <key>AUTO_SHUTDOWN</key>
+        <string>0</string>
+        <key>TRUSTED_HOSTS</key>
+        <string>127.0.0.1,localhost,global-stock-analyser</string>
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <key>StandardOutPath</key>
+    <string>/var/log/global-stock-analyser.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/var/log/global-stock-analyser.err.log</string>
+</dict>
+</plist>
