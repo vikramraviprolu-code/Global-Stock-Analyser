@@ -4,7 +4,7 @@
 # CN: Global-Stock-Analyser  |  SAN: Global-Stock-Analyser, localhost, 127.0.0.1
 set -euo pipefail
 
-HOSTNAME="${HOSTNAME:-Global-Stock-Analyser}"
+APP_HOSTNAME="${APP_HOSTNAME:-Global-Stock-Analyser}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="$ROOT/certs"
 mkdir -p "$DEST"
@@ -19,8 +19,8 @@ fi
 
 openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 365 \
   -keyout "$KEY" -out "$CERT" \
-  -subj "/CN=${HOSTNAME}" \
-  -addext "subjectAltName=DNS:${HOSTNAME},DNS:localhost,IP:127.0.0.1" \
+  -subj "/CN=${APP_HOSTNAME}" \
+  -addext "subjectAltName=DNS:${APP_HOSTNAME},DNS:localhost,IP:127.0.0.1" \
   -addext "extendedKeyUsage=serverAuth"
 
 chmod 600 "$KEY"

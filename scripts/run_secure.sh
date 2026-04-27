@@ -4,7 +4,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-HOSTNAME="${HOSTNAME:-Global-Stock-Analyser}"
+APP_HOSTNAME="${APP_HOSTNAME:-Global-Stock-Analyser}"
 PORT="${PORT:-443}"
 URL_PREFIX="${URL_PREFIX:-/Local}"
 HOST="${HOST:-0.0.0.0}"
@@ -16,8 +16,8 @@ if [[ ! -f "$ROOT/certs/cert.pem" || ! -f "$ROOT/certs/key.pem" ]]; then
 fi
 
 # 2. Verify hosts entry
-if ! grep -qi "[[:space:]]${HOSTNAME}\(\$\|[[:space:]]\)" /etc/hosts; then
-  echo "⚠️  /etc/hosts missing entry for ${HOSTNAME}."
+if ! grep -qi "[[:space:]]${APP_HOSTNAME}\(\$\|[[:space:]]\)" /etc/hosts; then
+  echo "⚠️  /etc/hosts missing entry for ${APP_HOSTNAME}."
   echo "   Run: sudo bash $ROOT/scripts/setup_hosts.sh"
   exit 1
 fi
@@ -31,8 +31,9 @@ fi
 export HOST PORT URL_PREFIX
 export SSL_CERT="$ROOT/certs/cert.pem"
 export SSL_KEY="$ROOT/certs/key.pem"
-export TRUSTED_HOSTS="${TRUSTED_HOSTS:-127.0.0.1,localhost,${HOSTNAME,,}}"
+APP_HOSTNAME_LC="$(echo "$APP_HOSTNAME" | tr '[:upper:]' '[:lower:]')"
+export TRUSTED_HOSTS="${TRUSTED_HOSTS:-127.0.0.1,localhost,${APP_HOSTNAME_LC}}"
 
 cd "$ROOT"
-echo "🚀 https://${HOSTNAME}:${PORT}${URL_PREFIX}  (Ctrl-C to stop)"
+echo "🚀 https://${APP_HOSTNAME}:${PORT}${URL_PREFIX}  (Ctrl-C to stop)"
 exec $NEED_SUDO python3 -W ignore app.py

@@ -3,11 +3,11 @@
 # Requires sudo.
 set -euo pipefail
 
-HOSTNAME="${HOSTNAME:-Global-Stock-Analyser}"
-ENTRY="127.0.0.1 ${HOSTNAME}"
+APP_HOSTNAME="${APP_HOSTNAME:-Global-Stock-Analyser}"
+ENTRY="127.0.0.1 ${APP_HOSTNAME}"
 
-if grep -qi "[[:space:]]${HOSTNAME}\(\$\|[[:space:]]\)" /etc/hosts; then
-  echo "✅ /etc/hosts already maps ${HOSTNAME}"
+if grep -qi "[[:space:]]${APP_HOSTNAME}\(\$\|[[:space:]]\)" /etc/hosts; then
+  echo "✅ /etc/hosts already maps ${APP_HOSTNAME}"
   exit 0
 fi
 
