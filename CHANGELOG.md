@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.6.4] - 2026-04-27
+
+### Fixed
+- **HSTS made cert errors unbypassable.** v0.4.0 added
+  `Strict-Transport-Security: max-age=31536000` on TLS responses.
+  Combined with a self-signed cert, Chrome refused any "Advanced →
+  Proceed" path on `global-stock-analyser`, showing only the dead-end
+  warning page. Removed HSTS — TLS still on, but the browser now
+  accepts the trusted self-signed cert (or allows bypass).
+- HSTS is anti-pattern for self-signed local hostnames; will not be
+  re-added until the project supports a properly issued cert.
+
 ## [0.6.3] - 2026-04-27
 
 ### Fixed

@@ -93,8 +93,9 @@ def _security_headers(resp):
     resp.headers["X-Frame-Options"] = "DENY"
     resp.headers["Referrer-Policy"] = "no-referrer"
     resp.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-    if request.is_secure:
-        resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    # HSTS intentionally NOT set: this app uses a self-signed cert for a local
+    # hostname. HSTS would lock the browser into refusing the cert without any
+    # bypass option (chrome://net-internals/#hsts to clear). Keep TLS, drop HSTS.
     if request.path.startswith("/static") or request.path in ("/", "/app"):
         resp.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
