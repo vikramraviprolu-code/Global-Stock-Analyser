@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Screener — EquityScope</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='screener.css') }}">
+</head>
+<body>
+{% set active_page = 'screener' %}
+{% include '_nav.html' %}
+
+<div class="screener-shell">
+  <aside class="filter-panel">
+    <h2>Presets</h2>
+    <div id="preset-list" class="preset-list">
+      <div class="muted">Loading presets…</div>
+    </div>
+
+    <h2 style="margin-top: 24px;">Custom Filters</h2>
+    <div class="filter-group">
+      <label>Region</label>
+      <select id="f-region">
+        <option value="">Any</option>
+        <option>Americas</option>
+        <option>Europe</option>
+        <option>Asia</option>
+        <option>Asia-Pacific</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Country</label>
+      <select id="f-country" multiple size="4">
+        <option>USA</option><option>India</option><option>UK</option>
+        <option>Germany</option><option>France</option><option>Japan</option>
+        <option>Hong Kong</option><option>South Korea</option><option>Taiwan</option>
+        <option>Singapore</option><option>Australia</option><option>China</option>
+        <option>Switzerland</option><option>Italy</option><option>Spain</option>
+        <option>Netherlands</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Sector</label>
+      <select id="f-sector">
+        <option value="">Any</option>
+        <option>Technology</option><option>Healthcare</option><option>Financial Services</option>
+        <option>Consumer Cyclical</option><option>Consumer Defensive</option>
+        <option>Communication Services</option><option>Energy</option><option>Industrials</option>
+        <option>Basic Materials</option><option>Utilities</option><option>Real Estate</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Market Cap (USD min)</label>
+      <select id="f-mcap">
+        <option value="">Any</option>
+        <option value="500000000">≥ $500M</option>
+        <option value="2000000000" selected>≥ $2B</option>
+        <option value="10000000000">≥ $10B (large-cap)</option>
+        <option value="50000000000">≥ $50B (mega-cap)</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Trailing P/E max</label>
+      <input id="f-pe" type="number" step="0.1" min="0" placeholder="e.g. 20">
+    </div>
+    <div class="filter-group">
+      <label>RSI range</label>
+      <div class="filter-range">
+        <input id="f-rsi-min" type="number" step="1" min="0" max="100" placeholder="min">
+        <input id="f-rsi-max" type="number" step="1" min="0" max="100" placeholder="max">
+      </div>
+    </div>
+    <div class="filter-group">
+      <label>5-day performance min (%)</label>
+      <input id="f-p5" type="number" step="0.1" placeholder="e.g. 2">
+    </div>
+    <div class="filter-group">
+      <label>Within X% of 52W low</label>
+      <input id="f-pct-low" type="number" step="0.1" placeholder="e.g. 10">
+    </div>
+    <div class="filter-group">
+      <label class="filter-check">
+        <input id="f-above-200" type="checkbox"> Price above 200D MA
+      </label>
+    </div>
+    <button id="run-screen" class="btn-primary">Run Screen</button>
+    <button id="clear-filters" class="btn-ghost">Clear</button>
+  </aside>
+
+  <section class="results-panel">
+    <header class="results-header">
+      <div>
+        <h1 id="results-title">Run a screen to see results</h1>
+        <p id="results-subtitle" class="muted">Pick a preset or build custom filters.</p>
+      </div>
+      <div class="view-toggle">
+        <button class="vt-btn active" data-view="table">📋 Table</button>
+        <button class="vt-btn" data-view="cards">▦ Cards</button>
+      </div>
+    </header>
+
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <div style="margin-top: 12px;">Running screen — fetching market data, computing indicators…</div>
+    </div>
+
+    <div id="error-box" class="error hidden"></div>
+
+    <div id="warnings-box" class="warnings hidden"></div>
+
+    <div id="results-table-wrap" class="hidden">
+      <table id="results-table" class="results-table">
+        <thead><tr id="results-thead"></tr></thead>
+        <tbody id="results-tbody"></tbody>
+      </table>
+    </div>
+
+    <div id="results-cards" class="results-cards hidden"></div>
+
+    <p class="disclaimer">
+      <strong>Data disclaimer.</strong> Free-source market data may be delayed,
+      incomplete, adjusted, stale, or unavailable. Missing values display as
+      "—" / "Data unavailable" — never fabricated. This analysis is for
+      informational purposes only and is not financial advice.
+    </p>
+  </section>
+</div>
+
+<script>
+const APP_BASE = {{ request.script_root|tojson }};
+const $ = (id) => document.getElementById(id);
+
+// ---------- helpers ----------
+const fmtN = (n, dec = 2) => (n == null ? "—" : Number(n).toFixed(dec));
+const fmtPct = (n, dec = 2) => (n == null ? "—" : (n >= 0 ? "+" : "") + Number(n).toFixed(dec) + "%");
+const fmtMcap = (n, sym = "$") => {
+  if (n == null) return "—";
+  if (n >= 1e12) return sym + (n / 1e12).toFixed(2) + "T";
+  if (n >= 1e9)  return sym + (n / 1e9).toFixed(2) + "B";
+  if (n >= 1e6)  return sym + (n / 1e6).toFixed(1) + "M";
+  return sym + Number(n).toFixed(0);
+};
+const fmtVol = (n) => {
+  if (n == null) return "—";
+  if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
+  if (n >= 1e3) return (n / 1e3).toFixed(0) + "K";
+  return Number(n).toFixed(0);
+};
+const cls = (n) => (n == null ? "muted" : n > 0 ? "green" : n < 0 ? "red" : "muted");
+const flag = (c) => ({
+  "USA":"🇺🇸","India":"🇮🇳","UK":"🇬🇧","Germany":"🇩🇪","France":"🇫🇷",
+  "Netherlands":"🇳🇱","Switzerland":"🇨🇭","Italy":"🇮🇹","Spain":"🇪🇸",
+  "Sweden":"🇸🇪","Finland":"🇫🇮","Denmark":"🇩🇰","Norway":"🇳🇴",
+  "Japan":"🇯🇵","Hong Kong":"🇭🇰","South Korea":"🇰🇷","Taiwan":"🇹🇼",
+  "Singapore":"🇸🇬","Australia":"🇦🇺","China":"🇨🇳","Canada":"🇨🇦",
+}[c] || "🌐");
+
+const sourceBadge = (sv) => {
+  if (!sv) return '<span class="src-badge unavailable">—</span>';
+  const f = sv.freshness || "unavailable";
+  const cls = "src-badge " + f.replace(/[^a-z]/g, "-");
+  const tip = `${sv.source_name || "?"} • ${sv.confidence || "?"} confidence`;
+  const label = ({
+    "real-time": "live", "delayed": "delayed", "previous-close": "prev close",
+    "historical-only": "historical", "cached": "cached", "unavailable": "—",
+    "mock": "MOCK",
+  })[f] || f;
+  return `<span class="${cls}" title="${tip}">${label}</span>`;
+};
+
+const scoreBar = (s, max) => {
+  if (!s) return "—";
+  const pct = Math.max(0, Math.min(100, (s.value / max) * 100));
+  const cls = "score-bar " + (s.label || "Mixed").toLowerCase();
+  return `<div class="${cls}" title="${(s.reasons || []).join('; ')}">
+    <div class="score-fill" style="width:${pct}%"></div>
+    <span class="score-text">${s.value.toFixed(1)} · ${s.label}</span>
+  </div>`;
+};
+
+// ---------- presets ----------
+async function loadPresets() {
+  try {
+    const res = await fetch(APP_BASE + "/api/screener/presets");
+    const data = await res.json();
+    const list = $("preset-list");
+    list.innerHTML = data.presets.map((p) => `
+      <button class="preset-card" data-key="${p.key}">
+        <div class="preset-name">${p.name}</div>
+        <div class="preset-desc">${p.description}</div>
+        <div class="preset-tags">${p.filter_labels.map((l) => `<span class="preset-tag">${l}</span>`).join("")}</div>
+      </button>`).join("");
+    list.querySelectorAll(".preset-card").forEach((b) =>
+      b.onclick = () => runScreen({ preset: b.dataset.key, presetName: b.querySelector(".preset-name").textContent })
+    );
+  } catch (e) {
+    $("preset-list").innerHTML = `<div class="error">Failed to load presets.</div>`;
+  }
+}
+
+// ---------- custom filter assembly ----------
+function customFilters() {
+  const filters = [];
+  const country = Array.from($("f-country").selectedOptions).map((o) => o.value).filter(Boolean);
+  if (country.length) filters.push({ kind: "country_in", value: country, label: country.join(", ") });
+  const region = $("f-region").value;
+  if (region) filters.push({ kind: "region_in", value: [region], label: region });
+  const sector = $("f-sector").value;
+  if (sector) filters.push({ kind: "sector_in", value: [sector], label: sector });
+  const mcap = $("f-mcap").value;
+  if (mcap) filters.push({ kind: "mcap_usd_min", value: parseFloat(mcap), label: `Mcap ≥ $${(parseFloat(mcap)/1e9).toFixed(0)}B` });
+  const pe = $("f-pe").value;
+  if (pe) filters.push({ kind: "pe_max", value: parseFloat(pe), label: `P/E ≤ ${pe}` });
+  const rmin = $("f-rsi-min").value;
+  if (rmin !== "") filters.push({ kind: "rsi_min", value: parseFloat(rmin), label: `RSI ≥ ${rmin}` });
+  const rmax = $("f-rsi-max").value;
+  if (rmax !== "") filters.push({ kind: "rsi_max", value: parseFloat(rmax), label: `RSI ≤ ${rmax}` });
+  const p5 = $("f-p5").value;
+  if (p5) filters.push({ kind: "perf5d_min", value: parseFloat(p5), label: `5D ≥ ${p5}%` });
+  const pl = $("f-pct-low").value;
+  if (pl) filters.push({ kind: "pct_from_low_max", value: parseFloat(pl), label: `≤ ${pl}% from 52W low` });
+  if ($("f-above-200").checked) filters.push({ kind: "above_ma200", value: true, label: "Price > 200D MA" });
+  return filters;
+}
+
+// ---------- run ----------
+async function runScreen(opts = {}) {
+  $("error-box").classList.add("hidden");
+  $("warnings-box").classList.add("hidden");
+  $("results-table-wrap").classList.add("hidden");
+  $("results-cards").classList.add("hidden");
+  $("loading").classList.remove("hidden");
+  $("results-title").textContent = opts.presetName || "Custom Screen";
+  $("results-subtitle").textContent = "Running…";
+
+  const body = opts.preset
+    ? { preset: opts.preset }
+    : { filters: customFilters() };
+
+  if (!opts.preset && !body.filters.length) {
+    $("loading").classList.add("hidden");
+    $("error-box").textContent = "Pick at least one filter or preset.";
+    $("error-box").classList.remove("hidden");
+    return;
+  }
+
+  try {
+    const res = await fetch(APP_BASE + "/api/screener/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      $("error-box").textContent = "❌ " + (data.error || "Screen failed.");
+      $("error-box").classList.remove("hidden");
+    } else {
+      renderResults(data);
+    }
+  } catch (e) {
+    $("error-box").textContent = "❌ Network error: " + e.message;
+    $("error-box").classList.remove("hidden");
+  } finally {
+    $("loading").classList.add("hidden");
+  }
+}
+
+// ---------- render ----------
+let lastResults = null;
+let currentSort = { col: "value_score", dir: "desc" };
+
+function renderResults(data) {
+  lastResults = data;
+  $("results-subtitle").textContent =
+    `${data.matches.length} match(es) · scanned ${data.after_cheap_filters} of ${data.total_universe} universe candidates · enriched ${data.enriched_count}`;
+
+  if (data.warnings && data.warnings.length) {
+    $("warnings-box").innerHTML = data.warnings.map((w) => `<div>⚠️ ${w}</div>`).join("");
+    $("warnings-box").classList.remove("hidden");
+  }
+
+  if (!data.matches.length) {
+    $("results-table-wrap").classList.add("hidden");
+    $("results-cards").classList.add("hidden");
+    $("error-box").textContent = "No stocks matched. Loosen your filters.";
+    $("error-box").classList.remove("hidden");
+    return;
+  }
+
+  if (currentView === "table") renderTable();
+  else renderCards();
+}
+
+const COLUMNS = [
+  { key: "ticker",    label: "Ticker",  get: (m) => m.security.ticker, sortVal: (m) => m.security.ticker },
+  { key: "company",   label: "Company", get: (m) => `${flag(m.security.country)} ${m.security.company_name || m.security.ticker}` },
+  { key: "country",   label: "Country", get: (m) => m.security.country || "—", sortVal: (m) => m.security.country || "" },
+  { key: "sector",    label: "Sector",  get: (m) => m.security.sector || "—", sortVal: (m) => m.security.sector || "" },
+  { key: "price",     label: "Price",   get: (m) => `${m.security.currency || ""} ${fmtN(m.price.value)}`, sortVal: (m) => m.price.value, src: "price" },
+  { key: "mcap",      label: "Mcap (USD)", get: (m) => fmtMcap(m.market_cap_usd.value), sortVal: (m) => m.market_cap_usd.value, src: "market_cap_usd" },
+  { key: "pe",        label: "P/E",     get: (m) => fmtN(m.trailing_pe.value, 1), sortVal: (m) => m.trailing_pe.value, src: "trailing_pe" },
+  { key: "p5",        label: "5D %",    get: (m) => `<span class="${cls(m.five_day_performance.value)}">${fmtPct(m.five_day_performance.value)}</span>`, sortVal: (m) => m.five_day_performance.value },
+  { key: "rsi",       label: "RSI 14",  get: (m) => fmtN(m.rsi14.value, 1), sortVal: (m) => m.rsi14.value },
+  { key: "pct_low",   label: "% from low", get: (m) => fmtPct(m.percent_from_low.value), sortVal: (m) => m.percent_from_low.value },
+  { key: "value_score",    label: "Value",    get: (m) => scoreBar(m.scores.value_score, 4), sortVal: (m) => m.scores.value_score.value },
+  { key: "momentum_score", label: "Momentum", get: (m) => scoreBar(m.scores.momentum_score, 7), sortVal: (m) => m.scores.momentum_score.value },
+  { key: "data",      label: "Data",    get: (m) => sourceBadge(m.price), sortVal: (m) => m.price.confidence },
+];
+
+function renderTable() {
+  $("results-cards").classList.add("hidden");
+  $("results-table-wrap").classList.remove("hidden");
+  const thead = $("results-thead");
+  thead.innerHTML = COLUMNS.map((c) => {
+    const arrow = currentSort.col === c.key ? (currentSort.dir === "asc" ? " ↑" : " ↓") : "";
+    return `<th data-col="${c.key}" class="sortable">${c.label}${arrow}</th>`;
+  }).join("");
+  thead.querySelectorAll("th.sortable").forEach((th) =>
+    th.onclick = () => {
+      const col = th.dataset.col;
+      if (currentSort.col === col) currentSort.dir = currentSort.dir === "asc" ? "desc" : "asc";
+      else { currentSort.col = col; currentSort.dir = "desc"; }
+      renderTable();
+    }
+  );
+
+  const sortKey = COLUMNS.find((c) => c.key === currentSort.col);
+  const sorted = [...lastResults.matches].sort((a, b) => {
+    const av = sortKey.sortVal ? sortKey.sortVal(a) : sortKey.get(a);
+    const bv = sortKey.sortVal ? sortKey.sortVal(b) : sortKey.get(b);
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    if (av < bv) return currentSort.dir === "asc" ? -1 : 1;
+    if (av > bv) return currentSort.dir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const tbody = $("results-tbody");
+  tbody.innerHTML = sorted.map((m) => `
+    <tr data-ticker="${m.security.ticker}">
+      ${COLUMNS.map((c) => `<td>${c.get(m)}</td>`).join("")}
+    </tr>`).join("");
+  tbody.querySelectorAll("tr").forEach((tr) =>
+    tr.onclick = () => { window.location.href = APP_BASE + "/app?ticker=" + encodeURIComponent(tr.dataset.ticker); }
+  );
+}
+
+function renderCards() {
+  $("results-table-wrap").classList.add("hidden");
+  $("results-cards").classList.remove("hidden");
+  const sorted = [...lastResults.matches].sort((a, b) =>
+    (b.scores.value_score.value + b.scores.momentum_score.value) -
+    (a.scores.value_score.value + a.scores.momentum_score.value)
+  );
+  $("results-cards").innerHTML = sorted.map((m) => `
+    <a class="result-card" href="${APP_BASE + '/app?ticker=' + encodeURIComponent(m.security.ticker)}">
+      <div class="rc-head">
+        <div class="rc-ticker">${flag(m.security.country)} <strong>${m.security.ticker}</strong></div>
+        ${sourceBadge(m.price)}
+      </div>
+      <div class="rc-name">${m.security.company_name || m.security.ticker}</div>
+      <div class="rc-meta">${m.security.exchange || "—"} · ${m.security.sector || "—"}</div>
+      <div class="rc-grid">
+        <div><span class="lbl">Price</span><span>${m.security.currency || ""} ${fmtN(m.price.value)}</span></div>
+        <div><span class="lbl">Mcap</span><span>${fmtMcap(m.market_cap_usd.value)}</span></div>
+        <div><span class="lbl">P/E</span><span>${fmtN(m.trailing_pe.value, 1)}</span></div>
+        <div><span class="lbl">5D</span><span class="${cls(m.five_day_performance.value)}">${fmtPct(m.five_day_performance.value)}</span></div>
+        <div><span class="lbl">RSI</span><span>${fmtN(m.rsi14.value, 1)}</span></div>
+        <div><span class="lbl">% from low</span><span>${fmtPct(m.percent_from_low.value)}</span></div>
+      </div>
+      <div class="rc-scores">
+        ${scoreBar(m.scores.value_score, 4)}
+        ${scoreBar(m.scores.momentum_score, 7)}
+      </div>
+    </a>`).join("");
+}
+
+// ---------- view toggle ----------
+let currentView = "table";
+document.querySelectorAll(".vt-btn").forEach((b) =>
+  b.onclick = () => {
+    document.querySelectorAll(".vt-btn").forEach((x) => x.classList.remove("active"));
+    b.classList.add("active");
+    currentView = b.dataset.view;
+    if (lastResults) {
+      if (currentView === "table") renderTable(); else renderCards();
+    }
+  }
+);
+
+// ---------- bindings ----------
+$("run-screen").onclick = () => runScreen();
+$("clear-filters").onclick = () => {
+  ["f-country", "f-region", "f-sector", "f-mcap", "f-pe", "f-rsi-min",
+   "f-rsi-max", "f-p5", "f-pct-low"].forEach((id) => $(id).value = "");
+  $("f-above-200").checked = false;
+};
+
+loadPresets();
+</script>
+</body>
+</html>

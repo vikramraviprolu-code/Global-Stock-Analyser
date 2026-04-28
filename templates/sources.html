@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sources — EquityScope</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='screener.css') }}">
+</head>
+<body>
+{% set active_page = 'sources' %}
+{% include '_nav.html' %}
+
+<div class="screener-shell" style="grid-template-columns: 1fr;">
+  <section class="results-panel">
+    <h1>Connected Data Sources</h1>
+    <p class="muted">Every value the app shows is annotated with its provider, retrieval time, freshness, and confidence. Below is a snapshot of which providers are wired in.</p>
+
+    <div id="provider-grid" class="provider-grid">
+      <div class="muted">Loading…</div>
+    </div>
+
+    <h2 style="margin-top: 32px;">Universe</h2>
+    <div id="universe-stats" class="muted">Loading…</div>
+
+    <p class="disclaimer" style="margin-top: 24px;">
+      Free-source market data may be delayed, incomplete, adjusted, stale, or unavailable.
+      When live providers fail, the app falls back to the local mock provider — every mock value is clearly badged
+      <span class="src-badge mock">MOCK</span> and never silently mixed with real data.
+    </p>
+  </section>
+</div>
+
+<script>
+const APP_BASE = {{ request.script_root|tojson }};
+fetch(APP_BASE + "/api/sources/health").then((r) => r.json()).then((data) => {
+  document.getElementById("provider-grid").innerHTML = Object.entries(data.providers).map(([key, p]) => `
+    <div class="provider-card">
+      <div class="provider-key">${key}</div>
+      <div class="provider-name">${p.name}</div>
+      <div class="provider-type">${p.type}</div>
+      ${p.url ? `<a href="${p.url}" target="_blank" rel="noopener">${p.url}</a>` : ""}
+    </div>`).join("");
+  const u = data.universe;
+  document.getElementById("universe-stats").innerHTML = `
+    <strong>${u.universe_size}</strong> tickers in curated universe ·
+    cache: <strong>${u.enriched_cache.entries}</strong> entries ·
+    TTL <strong>${u.enriched_cache.ttl_seconds}s</strong>`;
+});
+</script>
+</body>
+</html>

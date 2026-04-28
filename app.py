@@ -22,10 +22,15 @@ from werkzeug.exceptions import NotFound
 from analyzer import run_analysis
 from resolver import search, needs_disambiguation
 from markets import listing_meta
+from providers import UniverseService
+from screener import Filter, ScreenerEngine, PRESETS, get_preset
+from screener.presets import list_presets
+from calc.scoring import score_all
 
 URL_PREFIX = os.getenv("URL_PREFIX", "").rstrip("/")  # e.g. "/Local"
 
 app = Flask(__name__)
+app.json.allow_nan_values = False  # type: ignore[attr-defined]  # strict JSON
 if URL_PREFIX:
     app.config["APPLICATION_ROOT"] = URL_PREFIX
 
@@ -139,14 +144,182 @@ def _security_headers(resp):
     return resp
 
 
+# ----- v2 services (singletons) ----------------------------------------------
+_universe_service = UniverseService()
+_screener_engine = ScreenerEngine(_universe_service)
+
+
+def _scrub_nan(obj):
+    """Recursively replace float NaN/Inf with None (valid JSON)."""
+    import math
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    if isinstance(obj, dict):
+        return {k: _scrub_nan(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_scrub_nan(v) for v in obj]
+    return obj
+
+
+def _filters_from_payload(payload: dict) -> list:
+    """Convert JSON {kind, value} dicts into Filter dataclasses, with input
+    validation. Reject anything that doesn't match the supported kinds."""
+    if not isinstance(payload, list):
+        return []
+    valid_kinds = {
+        "sector_in", "country_in", "region_in", "exchange_in",
+        "price_min", "price_max", "mcap_usd_min", "mcap_usd_max",
+        "pe_min", "pe_max", "rsi_min", "rsi_max",
+        "perf5d_min", "perf5d_max", "pct_from_low_max",
+        "above_ma200", "dividend_min",
+    }
+    out = []
+    for item in payload[:32]:  # cap to prevent abuse
+        if not isinstance(item, dict):
+            continue
+        kind = str(item.get("kind", ""))
+        if kind not in valid_kinds:
+            continue
+        value = item.get("value")
+        # Type-coerce safely
+        if kind in ("sector_in", "country_in", "region_in", "exchange_in"):
+            if not isinstance(value, list):
+                continue
+            value = [str(v)[:60] for v in value[:32]]
+        elif kind == "above_ma200":
+            value = bool(value)
+        else:
+            try:
+                value = float(value)
+            except (TypeError, ValueError):
+                continue
+        out.append(Filter(kind=kind, value=value, label=item.get("label")))
+    return out
+
+
 @app.route("/")
+def home():
+    """Default landing — Screener (per spec)."""
+    return render_template("screener.html")
+
+
+@app.route("/screener")
+def screener_page():
+    return render_template("screener.html")
+
+
+@app.route("/welcome")
 def landing():
+    """Marketing landing page (was at / before v2)."""
     return render_template("landing.html")
 
 
 @app.route("/app")
 def dashboard():
     return render_template("index.html")
+
+
+@app.route("/sources")
+def sources_page():
+    return render_template("sources.html")
+
+
+# ----- v2 API ----------------------------------------------------------------
+
+@app.route("/api/screener/presets")
+def api_screener_presets():
+    return jsonify({"presets": list_presets()})
+
+
+@app.route("/api/screener/run", methods=["POST"])
+def api_screener_run():
+    data = request.get_json(silent=True) or {}
+    preset_key = data.get("preset")
+    custom = data.get("filters") or []
+
+    if preset_key:
+        if preset_key not in PRESETS:
+            return jsonify({"error": "Unknown preset."}), 400
+        filters = get_preset(preset_key)
+    else:
+        filters = _filters_from_payload(custom)
+
+    if not filters:
+        return jsonify({"error": "No filters provided."}), 400
+
+    # Throttle: max 30 filters
+    if len(filters) > 30:
+        return jsonify({"error": "Too many filters."}), 400
+
+    try:
+        result = _screener_engine.screen(filters)
+    except Exception:
+        app.logger.exception("Screener run failed")
+        return jsonify({"error": "Screener failed. See server logs."}), 500
+
+    # Attach scores for every match (computed cheaply on top of metrics)
+    payload_matches = []
+    for m in result.matches:
+        m_dict = m.to_dict()
+        # score_all expects a dict-shaped metrics; reuse the original SourcedValue-bearing object
+        scores = score_all({
+            "price": m.price, "market_cap_usd": m.market_cap_usd,
+            "trailing_pe": m.trailing_pe, "rsi14": m.rsi14, "roc14": m.roc14,
+            "roc21": m.roc21, "ma20": m.ma20, "ma50": m.ma50, "ma200": m.ma200,
+            "five_day_performance": m.five_day_performance,
+            "percent_from_low": m.percent_from_low,
+            "fifty_two_week_high": m.fifty_two_week_high,
+            "dividend_yield": m.dividend_yield,
+            "price_to_book": m.price_to_book,
+            "avg_daily_volume": m.avg_daily_volume,
+            "fifty_two_week_low": m.fifty_two_week_low,
+            "security": m.security.to_dict(),
+        })
+        m_dict["scores"] = scores.to_dict()
+        payload_matches.append(m_dict)
+
+    return jsonify(_scrub_nan({
+        "matches": payload_matches,
+        "total_universe": result.total_universe,
+        "after_cheap_filters": result.after_cheap_filters,
+        "enriched_count": result.enriched_count,
+        "failed_enrichment": result.failed_enrichment,
+        "warnings": result.warnings,
+    }))
+
+
+@app.route("/api/sources/health")
+def api_sources_health():
+    return jsonify({
+        "providers": {
+            "historical": {
+                "name": "Stooq CSV → yfinance fallback",
+                "type": "free",
+                "url": "https://stooq.com",
+                "fallback_url": "https://finance.yahoo.com",
+            },
+            "fundamentals": {
+                "name": "yfinance (.info)",
+                "type": "free / best-effort",
+                "url": "https://finance.yahoo.com",
+            },
+            "fx": {
+                "name": "yfinance currency pairs",
+                "type": "free",
+            },
+            "symbol_resolver": {
+                "name": "Curated universe + yfinance Search",
+                "type": "free",
+            },
+            "mock": {
+                "name": "Synthetic fallback",
+                "type": "mock — only when live source fails",
+            },
+        },
+        "universe": _universe_service.stats(),
+    })
 
 
 @app.route("/api/search")

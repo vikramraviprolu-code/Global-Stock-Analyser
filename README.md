@@ -1,4 +1,4 @@
-# EquityScope — Global Equity Research Dashboard
+# EquityScope v2 — Global Stock Discovery & Analysis Platform
 
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -14,6 +14,18 @@ exchanges** in **14 currencies**.
 > be delayed, incomplete, or unavailable. See [LICENSE](LICENSE) for details.
 
 ---
+
+## What's new in v0.8.0
+
+The app pivots from "analyze one stock" → "discover stocks". The
+**Screener** is now the default landing page. Pick a built-in preset
+("Value: within 10% of 52W low + P/E ≤ 10", "Momentum: 5D ≥ +5%",
+"Indian Banks", etc.) or build custom filters. Results are sortable
+(table view) or browsable as cards. Every metric carries a source-quality
+badge: `LIVE`, `DELAYED`, `PREV CLOSE`, `CACHED`, `MOCK`, or `UNAVAIL`.
+
+Inspired by TradingView, FINVIZ, Koyfin, Simply Wall St,
+StockAnalysis.com — but **free / no API keys / no scraping by default**.
 
 ## Features
 

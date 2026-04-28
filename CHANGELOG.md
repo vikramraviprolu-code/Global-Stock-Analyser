@@ -4,6 +4,82 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.8.0] - 2026-04-28
+
+### Added — v2 Screener (first deliverable)
+
+The app pivots from "analyze one stock" to "discover stocks". The Screener
+is now the default landing page (was: marketing page → moved to `/welcome`).
+
+**Provider abstraction** (`providers/`)
+- `HistoricalPriceProvider` — Stooq CSV → yfinance fallback, with an
+  in-memory TTL cache. Source name + URL bubbled up via `source_for()`.
+- `FundamentalsProvider` — yfinance `.info` best-effort, deps coerced
+  through `_to_float()` to handle string-typed numbers.
+- `SymbolResolver` — wraps the existing `resolver.search()`.
+- `MockProvider` — deterministic synthetic data labelled
+  `freshness="mock"` and never silently mixed with real data.
+- `UniverseService` — orchestrator: loads `universe_global.csv`, enriches
+  rows in parallel, falls back to mock per-row only when both Stooq and
+  yfinance return nothing.
+
+**Calc layer** (`calc/`)
+- `calc.indicators` — pure-math `simple_ma`, `rsi`, `roc`, `perf`,
+  `fifty_two_week_*`, `compute_indicators` (no DataFrames in the public
+  API → trivially unit-testable).
+- `calc.scoring` — `value_score` (max 4), `momentum_score` (max 7),
+  `quality_score` (max 4), `risk_score` (5 - penalties),
+  `data_confidence_score`. Each `Score` carries reasons + warnings +
+  `source_urls`. `score_all()` returns the full bundle.
+
+**Screener engine** (`screener/`)
+- Two-phase filter engine: cheap filters (sector / country / region /
+  exchange — no network) run first, then enrichment, then expensive
+  filters (price / mcap / P/E / RSI / perf / MA). Caps enrichment to 60
+  per request to bound latency; emits warning if more candidates exist.
+- 9 built-in presets covering value, momentum, trend-following,
+  mega-caps, regional cuts (Indian banks, Japan industrials, European
+  tech), oversold-bounce, dividend payers.
+
+**Typed data models** (`models.py`)
+- Python dataclasses 1:1 with the spec's TypeScript types. `SourcedValue`
+  carries provenance (source, retrieved-at, freshness, confidence,
+  warning) for every metric.
+
+**Routes / templates**
+- `/` (default) → Screener
+- `/screener` → Screener (alias)
+- `/sources` → Provider health page
+- `/welcome` → former marketing landing
+- `/app` → existing single-stock dashboard (unchanged)
+- `templates/_nav.html` — shared v2 nav bar
+- `templates/screener.html` + `static/screener.css` — sortable table,
+  card view toggle, source-quality badges, value/momentum score bars,
+  preset sidebar, custom filter builder
+- `templates/sources.html` — provider summary
+
+**API**
+- `GET /api/screener/presets` — list of built-in presets
+- `POST /api/screener/run` — `{preset}` or `{filters}` payload
+- `GET /api/sources/health` — provider + universe stats
+
+### Tests
+- `tests/test_indicators.py` — 14 cases covering MA / RSI / ROC / perf /
+  52-week / full bundle.
+- `tests/test_scoring.py` — 9 cases for all five score functions and
+  `score_all()`.
+- `tests/test_screener_engine.py` — 9 cases using a `StubUniverse` so
+  filter/preset logic is verified without network.
+
+All 55 tests pass.
+
+### Hardening
+- Flask configured `allow_nan_values=False`; results recursively scrubbed
+  via `_scrub_nan()` so NaN closes from Stooq holidays don't leak into
+  JSON.
+- `_filters_from_payload` validates filter `kind` against an allow-list
+  and caps payload to 32 filters.
+
 ## [0.7.0] - 2026-04-27
 
 ### Security
