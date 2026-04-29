@@ -4,6 +4,59 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.11.0] - 2026-04-29
+
+### Added — Build Step 2 (Stock Analysis 8-tab redesign + interactive charts + peer matrix v2)
+
+**Stock Analysis page rebuilt** (`/app`) with 8 PRD-spec tabs:
+1. **Snapshot** — full metric grid + score overview + peer-summary tags.
+2. **Chart** — interactive candlestick / line toggle, MA20/50/200 overlays,
+   volume histogram pane, RSI 14 sub-pane (with 30/70 reference lines),
+   ROC 14D sub-pane, 52-week high/low price lines, date-range buttons
+   (1M/3M/6M/1Y/3Y/5Y/Max), live crosshair tooltip showing date + OHLC +
+   volume + RSI + ROC. Falls back to line chart with warning if OHLC
+   incomplete.
+3. **Value** — score + reasons + warnings + input table with source badges
+   for P/E, forward P/E, P/B, dividend yield, % from low, market cap.
+4. **Momentum** — score + reasons + warnings + input table for 5D / ROC /
+   RSI / vs 20D / 50D / 200D MA distances.
+5. **Peers** — full PRD-format matrix
+   `Metric \| Input Stock \| Peer Median \| Peer Rank \| Better/Worse \| Source Quality`
+   plus a peer roster table with row-click navigation.
+6. **Events** — currently shows
+   "Data unavailable. No reliable free/public source found." per spec
+   (placeholder until Build Step 6).
+7. **Recommendation** — interim Buy/Watch/Avoid banner derived from scores;
+   notes that Build Step 7 will add Base/Upside/Downside cases, Technical
+   Trigger, Invalidation Level, Confidence Reason.
+8. **Sources** — per-stock audit table covering every metric with source
+   name, URL, retrieved-at, freshness, confidence, warning. CSV export.
+
+**Charting**
+- Self-hosted Lightweight Charts 4.2.0 (`static/vendor/`, ~160 KB) — keeps
+  CSP `script-src 'self'` intact.
+- Multi-pane chart with separate priceScaleIds for vol / rsi / roc.
+
+**Backend API**
+- `GET /api/ohlcv?ticker=&days=` — returns full OHLCV bars, source, freshness,
+  has_ohlc flag. Used by the Chart tab.
+- `POST /api/analyze/v2` — accepts `{ticker, peer_tickers?}`. Returns
+  `{input, peers, peer_matrix, history_source}`. Defaults peer discovery to
+  same-sector tickers from the curated universe.
+- `_peer_matrix()` builder computes median + rank + better/worse + source
+  quality across 13 PRD-required metrics, with summary booleans.
+
+**Tests**
+- `tests/test_analyze_v2.py` — 11 cases covering /api/ohlcv (invalid ticker,
+  default bars, days clamping), /api/analyze/v2 (full payload shape, all
+  required matrix metrics, summary keys, explicit peer override, rank
+  bounds), and /app route 8-tab structure.
+- All **87 tests pass** (was 76 in v0.10.0).
+
+### Smoke test (live data)
+- AAPL: 252 bars OHLCV from Yahoo Finance, 12 peers, scores V=10 M=90 Q=75
+  R=0 DC=100, peer-matrix shows P/E rank 7/12 vs peer median 30.2 (Worse).
+
 ## [0.10.0] - 2026-04-29
 
 ### Added — Build Step 1 complete (Screener parity with PRD)

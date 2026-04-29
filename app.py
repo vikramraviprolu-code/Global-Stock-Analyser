@@ -400,6 +400,71 @@ def api_metrics():
     return jsonify(_scrub_nan({"metrics": ordered}))
 
 
+@app.route("/api/ohlcv")
+def api_ohlcv():
+    """Full OHLCV series for the Stock Analysis chart panel.
+
+    Returns date / open / high / low / close / volume arrays plus a freshness
+    badge so the chart can render candlesticks + volume + indicator overlays.
+    """
+    ticker = (request.args.get("ticker") or "").upper().strip()
+    if not ticker or not TICKER_BATCH_RE.match(ticker):
+        return jsonify({"error": "Invalid ticker."}), 400
+    try:
+        days = int(request.args.get("days", "365"))
+    except ValueError:
+        days = 365
+    days = max(20, min(days, 2500))
+
+    df = _universe_service.fetch_history_for(ticker)
+    if df is None or df.empty:
+        return jsonify({"error": "No history available."}), 404
+    # Drop NaN closes
+    df = df.dropna(subset=["Close"]).tail(days).reset_index(drop=True)
+    if df.empty:
+        return jsonify({"error": "No valid bars after cleaning."}), 404
+
+    bars = []
+    for _, row in df.iterrows():
+        d = row["Date"]
+        date_str = (d.date() if hasattr(d, "date") else d)
+        try:
+            date_str = str(date_str)[:10]
+        except Exception:
+            continue
+        try:
+            o = float(row.get("Open", row["Close"]))
+            h = float(row.get("High", row["Close"]))
+            lo = float(row.get("Low", row["Close"]))
+            c = float(row["Close"])
+            v = row.get("Volume", 0)
+            v = float(v) if v == v else 0.0  # NaN guard
+        except (TypeError, ValueError):
+            continue
+        bars.append({
+            "time": date_str,
+            "open": o, "high": h, "low": lo, "close": c, "volume": v,
+        })
+
+    if not bars:
+        return jsonify({"error": "No usable OHLCV rows."}), 404
+
+    last_date = bars[-1]["time"]
+    has_ohlc = all(b["open"] != b["close"] or b["high"] != b["low"] for b in bars[:5])
+    src_name, src_url = _universe_service.historical.source_for(ticker)
+
+    return jsonify(_scrub_nan({
+        "ticker": ticker,
+        "bars": bars,
+        "count": len(bars),
+        "first_date": bars[0]["time"],
+        "last_date": last_date,
+        "has_ohlc": bool(has_ohlc),
+        "source_name": src_name,
+        "source_url": src_url,
+    }))
+
+
 @app.route("/api/sparkline")
 def api_sparkline():
     """Lightweight closes-only series for the compare page mini charts."""
@@ -498,6 +563,161 @@ def api_shutdown():
         return jsonify({"error": "Cross-origin shutdown blocked."}), 403
     threading.Timer(0.3, lambda: os._exit(0)).start()
     return ("", 204)
+
+
+def _peer_matrix(input_metric, peer_metrics):
+    """Build the v2 peer comparison matrix per PRD format:
+    { metric: { input, peer_median, peer_rank, better_or_worse, source_quality } }
+
+    Lower-is-better metrics (P/E, % from low, RSI distance from 50, risk_score)
+    treat smaller as better. For others, larger is better.
+    """
+    LOWER_BETTER = {"trailing_pe", "percent_from_low", "risk_score"}
+    METRIC_KEYS = [
+        ("trailing_pe", "P/E", "trailing_pe"),
+        ("market_cap_usd", "Market Cap (USD)", "market_cap_usd"),
+        ("five_day_performance", "5D Performance", "five_day_performance"),
+        ("rsi14", "RSI 14", "rsi14"),
+        ("roc14", "ROC 14D", "roc14"),
+        ("roc21", "ROC 21D", "roc21"),
+        ("percent_from_low", "% from 52W low", "percent_from_low"),
+        ("vs_ma200", "Price vs 200D MA", None),  # synthesized
+        ("value_score", "Value Score", "scores.value_score"),
+        ("momentum_score", "Momentum Score", "scores.momentum_score"),
+        ("quality_score", "Quality Score", "scores.quality_score"),
+        ("risk_score", "Risk Score", "scores.risk_score"),
+        ("data_confidence_score", "Data Confidence", "scores.data_confidence_score"),
+    ]
+
+    def get_val(metric_obj, key):
+        # metric_obj is StockMetrics + .scores attached on dict; we work with
+        # the dict-shaped payload here.
+        if key == "vs_ma200":
+            price = (metric_obj.get("price") or {}).get("value")
+            ma200 = (metric_obj.get("ma200") or {}).get("value")
+            if price is None or ma200 is None or ma200 == 0:
+                return None
+            return (price / ma200 - 1.0) * 100.0
+        if key.startswith("scores."):
+            sk = key.split(".", 1)[1]
+            return (metric_obj.get("scores") or {}).get(sk, {}).get("value")
+        sv = metric_obj.get(key)
+        if isinstance(sv, dict):
+            return sv.get("value")
+        return None
+
+    rows = []
+    for key, label, src_key in METRIC_KEYS:
+        input_val = get_val(input_metric, key if key != "vs_ma200" else "vs_ma200")
+        peer_vals = [get_val(p, key if key != "vs_ma200" else "vs_ma200") for p in peer_metrics]
+        peer_vals_clean = sorted([v for v in peer_vals if v is not None])
+        if not peer_vals_clean or input_val is None:
+            rows.append({
+                "metric": label, "input": input_val, "peer_median": None,
+                "peer_rank": None, "peer_count": len(peer_vals_clean),
+                "better_or_worse": "—", "source_quality": None,
+            })
+            continue
+        n = len(peer_vals_clean)
+        median = peer_vals_clean[n // 2] if n % 2 else (peer_vals_clean[n//2 - 1] + peer_vals_clean[n//2]) / 2
+        # Rank: include input alongside peers, count position
+        combined = sorted(peer_vals_clean + [input_val], reverse=(key not in LOWER_BETTER))
+        try:
+            rank = combined.index(input_val) + 1
+        except ValueError:
+            rank = None
+        if key in LOWER_BETTER:
+            better = input_val < median
+        else:
+            better = input_val > median
+        # Source quality
+        sq = None
+        if src_key and not src_key.startswith("scores.") and src_key != "vs_ma200":
+            sv = input_metric.get(src_key)
+            if isinstance(sv, dict):
+                sq = {
+                    "source_name": sv.get("source_name"),
+                    "freshness": sv.get("freshness"),
+                    "confidence": sv.get("confidence"),
+                }
+        rows.append({
+            "metric": label,
+            "input": input_val,
+            "peer_median": median,
+            "peer_rank": rank,
+            "peer_count": n + 1,
+            "better_or_worse": "Better" if better else "Worse",
+            "source_quality": sq,
+        })
+
+    # High-level summary booleans for the UI
+    pe_row = next((r for r in rows if r["metric"] == "P/E"), None)
+    mom_row = next((r for r in rows if r["metric"] == "Momentum Score"), None)
+    dc_row = next((r for r in rows if r["metric"] == "Data Confidence"), None)
+    risk_row = next((r for r in rows if r["metric"] == "Risk Score"), None)
+    summary = {
+        "cheaper_than_peers": pe_row and pe_row["better_or_worse"] == "Better",
+        "stronger_momentum_than_peers": mom_row and mom_row["better_or_worse"] == "Better",
+        "higher_data_confidence_than_peers": dc_row and dc_row["better_or_worse"] == "Better",
+        "higher_risk_than_peers": risk_row and risk_row["better_or_worse"] == "Worse",
+    }
+    return {"rows": rows, "summary": summary}
+
+
+@app.route("/api/analyze/v2", methods=["POST"])
+def api_analyze_v2():
+    """v2 analyze: returns enriched StockMetrics + scores + peer matrix.
+
+    Payload: { ticker, peer_tickers? } — peer_tickers defaults to up to 8 same-
+    sector picks from the curated universe.
+    """
+    data = request.get_json(silent=True) or {}
+    ticker = (data.get("ticker") or "").upper().strip()
+    if not ticker or not TICKER_BATCH_RE.match(ticker):
+        return jsonify({"error": "Invalid ticker."}), 400
+
+    try:
+        m = _universe_service.enrich_ticker(ticker)
+    except Exception:
+        app.logger.exception("Enrich failed for %s", ticker)
+        return jsonify({"error": "Enrichment failed."}), 500
+
+    scores = _scores_for_metric(m)
+    m_dict = m.to_dict()
+    m_dict["scores"] = scores.to_dict()
+
+    # Peer discovery: same sector + region, up to 8, exclude input ticker.
+    peer_tickers = data.get("peer_tickers")
+    if not peer_tickers:
+        sec = m.security
+        peer_rows = [
+            r for r in _universe_service.rows()
+            if (r.get("sector") or "").lower() == (sec.sector or "").lower()
+            and r["ticker"].upper() != ticker
+        ][:12]
+        peer_tickers = [r["ticker"].upper() for r in peer_rows]
+    else:
+        peer_tickers = [str(t).upper() for t in peer_tickers if isinstance(t, str)][:12]
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    peer_dicts = []
+    if peer_tickers:
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            futures = {ex.submit(_enrich_ticker_with_scores, t): t for t in peer_tickers}
+            for fut in as_completed(futures):
+                res = fut.result()
+                if res:
+                    peer_dicts.append(res)
+
+    matrix = _peer_matrix(m_dict, peer_dicts)
+    src_name, src_url = _universe_service.historical.source_for(ticker)
+
+    return jsonify(_scrub_nan({
+        "input": m_dict,
+        "peers": peer_dicts,
+        "peer_matrix": matrix,
+        "history_source": {"name": src_name, "url": src_url},
+    }))
 
 
 @app.route("/api/analyze", methods=["POST"])

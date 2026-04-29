@@ -1,0 +1,162 @@
+/* Stock Analysis page (v2 8-tab) — extends style.css + screener.css tokens. */
+
+.analysis-shell {
+  max-width: 1600px; margin: 0 auto; padding: 16px 24px;
+}
+
+/* ---------- search bar ---------- */
+.search-bar {
+  position: relative;
+  display: flex; gap: 8px;
+  background: var(--panel); padding: 12px;
+  border: 1px solid var(--border); border-radius: 8px;
+  margin-bottom: 12px;
+}
+.search-bar input {
+  flex: 1; padding: 10px 14px; font-size: 15px;
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+}
+.search-bar input:focus { outline: none; border-color: var(--accent); }
+
+.btn-pick {
+  padding: 6px 12px; background: var(--accent); color: #fff;
+  border: none; border-radius: 6px; font-weight: 600; font-size: 12px; cursor: pointer;
+}
+
+/* ---------- header ---------- */
+.analysis-header {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 16px; margin-bottom: 12px;
+}
+.analysis-header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+
+/* ---------- tabs ---------- */
+.analysis-tabs {
+  display: flex; gap: 0; border-bottom: 1px solid var(--border);
+  margin-bottom: 16px; overflow-x: auto;
+}
+.atab {
+  padding: 10px 18px; background: transparent; color: var(--muted);
+  border: none; border-bottom: 2px solid transparent;
+  cursor: pointer; font-size: 14px; font-weight: 500;
+  font-family: inherit; white-space: nowrap;
+}
+.atab:hover { color: var(--text); }
+.atab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.apanel { display: none; }
+.apanel.active { display: block; }
+
+/* ---------- snapshot grid ---------- */
+.card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 16px; margin-bottom: 12px;
+}
+.card h2 { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
+.card h3 { margin: 14px 0 6px; font-size: 13px; color: var(--accent); font-weight: 600; }
+.card p { margin: 0 0 8px; }
+
+.grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+.metric {
+  background: var(--panel-2); padding: 10px 12px; border-radius: 6px;
+  position: relative;
+}
+.metric .label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--muted); font-weight: 600;
+}
+.metric .value { font-size: 16px; font-weight: 600; margin-top: 4px; }
+.metric .src-badge { position: absolute; top: 8px; right: 8px; }
+
+/* ---------- score grid ---------- */
+.score-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px; margin-top: 8px;
+}
+.score-cell {
+  background: var(--panel-2); padding: 10px 12px; border-radius: 6px;
+}
+.score-cell .lbl {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px;
+  color: var(--muted); margin-bottom: 6px;
+}
+
+/* ---------- peer summary tags ---------- */
+.peer-summary {
+  display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0;
+}
+.ps-tag {
+  display: inline-block; padding: 4px 10px; border-radius: 12px;
+  font-size: 12px; font-weight: 500;
+  background: var(--panel-2); border: 1px solid var(--border);
+}
+.ps-tag.green { background: rgba(63, 185, 80, 0.12); color: var(--green); border-color: var(--green); }
+.ps-tag.red { background: rgba(248, 81, 73, 0.12); color: var(--red); border-color: var(--red); }
+.ps-tag.muted { color: var(--muted); }
+
+/* ---------- key/value table ---------- */
+.kv-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.kv-table tr { border-bottom: 1px solid var(--border); }
+.kv-table th {
+  text-align: left; padding: 8px 12px; color: var(--muted);
+  font-weight: 500; width: 40%; font-size: 12px;
+}
+.kv-table td { padding: 8px 12px; }
+
+/* ---------- chart toolbar ---------- */
+.chart-toolbar {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 14px; margin-bottom: 8px;
+}
+.ct-group { display: inline-flex; gap: 4px; }
+.ct-btn {
+  padding: 5px 10px; background: var(--panel-2); color: var(--muted);
+  border: 1px solid var(--border); border-radius: 4px;
+  cursor: pointer; font-size: 12px; font-family: inherit; font-weight: 500;
+}
+.ct-btn:hover { color: var(--text); }
+.ct-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.ct-info {
+  margin-left: auto; font-size: 12px; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.ct-info strong { color: var(--text); margin-right: 6px; }
+
+.chart-canvas {
+  height: 600px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 8px;
+  overflow: hidden;
+}
+
+/* ---------- recommendation banner ---------- */
+.rec-banner {
+  display: flex; align-items: center; gap: 16px;
+  padding: 16px; border-radius: 6px; margin-bottom: 12px;
+}
+.rec-banner.buy { background: rgba(63, 185, 80, 0.1); border: 1px solid var(--green); }
+.rec-banner.watch { background: rgba(210, 153, 34, 0.1); border: 1px solid var(--yellow); }
+.rec-banner.avoid { background: rgba(248, 81, 73, 0.1); border: 1px solid var(--red); }
+.rec-rating {
+  font-size: 22px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 1px; padding: 8px 18px; border-radius: 6px;
+}
+.rec-banner.buy .rec-rating { background: var(--green); color: #fff; }
+.rec-banner.watch .rec-rating { background: var(--yellow); color: #000; }
+.rec-banner.avoid .rec-rating { background: var(--red); color: #fff; }
+.rec-why { flex: 1; }
+
+/* ---------- inherited (results-table styles for peer/peer roster) ---------- */
+
+/* responsive */
+@media (max-width: 900px) {
+  .chart-canvas { height: 400px; }
+}
