@@ -4,6 +4,99 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.10.0] - 2026-04-29
+
+### Added — Build Step 1 complete (Screener parity with PRD)
+
+**Scoring on 0–100 scale per PRD weights**
+- `value_score`: +20 P/E ≤ 10, +15 below peer median, +20 within 10% of low,
+  +10 mcap ≥ $2B, +10 dividend > 2%, -15 P/E unavailable.
+- `momentum_score`: +15 each for 5D / ROC14 / ROC21 / RSI 40-70, +10 each
+  for above 20D / 50D / 200D MA, -15 RSI > 70, -20 below 200D MA, -15 both
+  ROC negative.
+- `quality_score`: +35 mega-cap, +20 large-cap, +20 dividend payer,
+  +15 P/B ≤ 5, +10 high liquidity, +10 defensive sector, +10 price + fund
+  both resolved.
+- `risk_score`: higher = riskier. +25 RSI > 70, +25 below 200D MA, +15 low
+  volume, +15 P/E missing, +10 small cap, +10 stale data, +10 near 52W high,
+  +10 both ROC negative.
+- `data_confidence_score`: 60% coverage + 30% freshness + 10% completeness
+  bonus, minus 5 per mock-flagged metric.
+- All clamped 0–100. Labels: Excellent (≥85), Good (≥65), Mixed (≥40),
+  Weak (≥20), Poor.
+
+**Filter engine — 32 filter kinds covering full PRD list**
+- Cheap: sector / country / region / exchange / **currency / industry /
+  listing_type**.
+- Range: price min/max, mcap min/max, P/E min/max, **P/B min/max**,
+  **dividend min/max**, **volume min/max**, RSI min/max, perf5d min/max,
+  **ROC14 min/max, ROC21 min/max**, pct_from_low min/max, **pct_from_high_max**.
+- Boolean: above_ma20 / above_ma50 / above_ma200, **exclude_unavailable_pe,
+  exclude_unavailable_mcap, exclude_stale, require_history**.
+- Score-based: **min_data_confidence** — engine now accepts `score_fn`
+  callback and filters using computed scores.
+
+**Presets — all 6 PRD-required**
+- Value Near Lows, Momentum Leaders, Quality Large Caps, Oversold Watchlist,
+  **Breakout Candidates** (new), **Data Reliable Only** (new). Plus 6 extras
+  (trend followers, mega caps, indian banks, japan industrials, europe tech,
+  dividend payers). 12 total.
+
+**Custom user-saved presets**
+- Saved to `localStorage["equityscope.customPresets"]`. "Save current
+  filters as preset" button names + persists. New "My Presets" tab in
+  filter sidebar.
+
+**Filter UI**
+- Sidebar reorganised into collapsible sections (Universe / Price &
+  Liquidity / Valuation / Momentum / Data Quality) with all 32 filters
+  exposed.
+
+**Results table**
+- All PRD columns now available: Company, Ticker, Exchange, Country,
+  Sector, **Industry**, **Currency**, Price, Market Cap, P/E, % from low,
+  5D %, RSI, **ROC 14D**, **ROC 21D**, Value, Momentum, **Quality**,
+  **Risk**, **Data Confidence**, Source.
+- **Column visibility controls** (⚙ Columns button) grouped by Overview /
+  Valuation / Momentum / Quality / Risk / Data; persisted in localStorage.
+- **Compact mode** toggle (smaller row height, smaller scores).
+- **Multi-select rows** + bulk action bar:
+  - Add to watchlist (any list)
+  - Compare (2–6 selected)
+  - **Export CSV** / **Export JSON**
+  - Clear selection
+
+**Card view**
+- **Mini sparklines** (60-day SVG, colour-coded by net change) on every
+  card. Backend `/api/screener/run` now accepts `include_sparkline=true`
+  and returns `recent_closes` per match.
+- All score bars + source badges visible.
+
+**"Why this score?" modal**
+- Click any score bar → modal with reasons, warnings, source URLs.
+  Works in both table and card views.
+
+### Tests
+- `test_scoring.py` — rewritten for the 0–100 scale with PRD weights.
+  Covers max-points, zero-bound, mock penalty, partial-data scenarios.
+- `test_screener_engine.py` — adds tests for new filter kinds:
+  currency_in, industry_in, above_ma20, pct_from_high_max,
+  exclude_unavailable_pe, score-aware min_data_confidence, breakout +
+  data_reliable preset structure.
+- All **76 tests pass** (was 65 in v0.9.0).
+
+### API
+- `POST /api/screener/run` accepts:
+  - `preset` or `filters` (existing)
+  - `include_sparkline: bool` (new)
+  - `sparkline_days: int` (new, 20–250, default 60)
+- Engine now returns `score_cache` so the route can avoid recomputing
+  scores after they're already calculated for filter evaluation.
+
+### Models
+- `StockMetrics` gains optional `recent_closes: List[float]` for
+  sparkline payloads.
+
 ## [0.9.0] - 2026-04-28
 
 ### Added — Watchlists + Compare (Build Steps 3 + 4)

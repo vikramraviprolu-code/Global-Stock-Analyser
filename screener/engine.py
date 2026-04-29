@@ -2,54 +2,55 @@
 
 Two-phase filtering:
   1. CHEAP filters operate on raw universe rows (no network) — sector, country,
-     region, listing_type, exchange.
+     region, listing_type, exchange, currency, industry.
   2. EXPENSIVE filters operate on enriched StockMetrics — price, mcap, P/E,
      RSI, perf, MA, etc.
 
 A `Filter` is a typed dict-like spec that the engine compiles into a callable.
 Stack any number of filters; results are AND-combined.
+
+Supported `kind` values:
+  Cheap (operate on raw row dicts):
+    sector_in, country_in, region_in, exchange_in, currency_in, industry_in,
+    listing_type_in
+  Expensive (operate on enriched StockMetrics):
+    price_min, price_max, mcap_usd_min, mcap_usd_max,
+    pe_min, pe_max, pb_min, pb_max,
+    dividend_min, dividend_max,
+    volume_min, volume_max,
+    rsi_min, rsi_max,
+    perf5d_min, perf5d_max,
+    roc14_min, roc14_max, roc21_min, roc21_max,
+    pct_from_low_min, pct_from_low_max,
+    pct_from_high_max,    # near 52W high (max distance below 0)
+    above_ma20, above_ma50, above_ma200,
+    min_data_confidence,   # uses computed score (0..100)
+    exclude_unavailable_pe, exclude_unavailable_mcap, exclude_stale,
+    require_history,
 """
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Any, Callable, List, Optional
+from typing import Any, List, Optional
 
 from models import StockMetrics
 
 
-# ---------- Filter spec -------------------------------------------------------
-
 @dataclass
 class Filter:
-    """A typed predicate. `kind` decides how `value` is interpreted.
-
-    Kinds:
-      - sector_in       value: List[str]
-      - country_in      value: List[str]
-      - region_in       value: List[str]
-      - exchange_in     value: List[str]
-      - price_min       value: float (in metric's local currency)
-      - price_max       value: float
-      - mcap_usd_min    value: float
-      - mcap_usd_max    value: float
-      - pe_min          value: float
-      - pe_max          value: float
-      - rsi_min         value: float
-      - rsi_max         value: float
-      - perf5d_min      value: float (percent)
-      - perf5d_max      value: float
-      - pct_from_low_max value: float (percent — within N% of 52W low)
-      - above_ma200     value: bool
-      - dividend_min    value: float
-    """
     kind: str
     value: Any
-    label: Optional[str] = None  # for UI display
+    label: Optional[str] = None
+
+    CHEAP_KINDS = {
+        "sector_in", "country_in", "region_in", "exchange_in",
+        "currency_in", "industry_in", "listing_type_in",
+    }
 
     def is_cheap(self) -> bool:
-        return self.kind in {"sector_in", "country_in", "region_in", "exchange_in"}
+        return self.kind in Filter.CHEAP_KINDS
 
 
-# ---------- Compilation -------------------------------------------------------
+# ---------- helpers -----------------------------------------------------------
 
 def _v(sv) -> Optional[float]:
     if sv is None:
@@ -59,7 +60,7 @@ def _v(sv) -> Optional[float]:
 
 
 def _check_row(row: dict, f: Filter) -> bool:
-    """For cheap filters (raw universe row dict)."""
+    """Cheap filter check on raw universe-row dict."""
     if f.kind == "sector_in":
         return (row.get("sector") or "").lower() in {s.lower() for s in f.value}
     if f.kind == "country_in":
@@ -68,20 +69,33 @@ def _check_row(row: dict, f: Filter) -> bool:
         return (row.get("region") or "").lower() in {s.lower() for s in f.value}
     if f.kind == "exchange_in":
         return (row.get("exchange") or "").lower() in {s.lower() for s in f.value}
+    if f.kind == "currency_in":
+        return (row.get("currency") or "").lower() in {s.lower() for s in f.value}
+    if f.kind == "industry_in":
+        return (row.get("industry") or "").lower() in {s.lower() for s in f.value}
+    if f.kind == "listing_type_in":
+        # universe rows don't carry listing_type; default to common-stock
+        listing = (row.get("listing_type") or "common-stock").lower()
+        return listing in {s.lower() for s in f.value}
     return True
 
 
-def _check_metric(m: StockMetrics, f: Filter) -> bool:
-    """For expensive filters (enriched StockMetrics)."""
-    if f.kind in {"sector_in", "country_in", "region_in", "exchange_in"}:
+def _check_metric(m: StockMetrics, f: Filter, scores: Optional[dict] = None) -> bool:
+    """Expensive filter check on enriched StockMetrics. `scores` is an
+    optional dict {value_score, momentum_score, ...} when filtering by score."""
+    # Cheap filters can also re-run here for safety (after security inferred).
+    if f.kind in Filter.CHEAP_KINDS:
         sec = m.security
         haystack = {
             "sector_in": (sec.sector or "").lower(),
             "country_in": (sec.country or "").lower(),
             "region_in": (sec.region or "").lower(),
             "exchange_in": (sec.exchange or "").lower(),
+            "currency_in": (sec.currency or "").lower(),
+            "industry_in": (sec.industry or "").lower(),
+            "listing_type_in": (sec.listing_type or "common-stock").lower(),
         }[f.kind]
-        return haystack in {s.lower() for s in f.value}
+        return haystack in {str(s).lower() for s in f.value}
 
     price = _v(m.price)
     if f.kind == "price_min":
@@ -101,6 +115,24 @@ def _check_metric(m: StockMetrics, f: Filter) -> bool:
     if f.kind == "pe_max":
         return pe is not None and pe > 0 and pe <= f.value
 
+    pb = _v(m.price_to_book) if m.price_to_book else None
+    if f.kind == "pb_min":
+        return pb is not None and pb >= f.value
+    if f.kind == "pb_max":
+        return pb is not None and pb <= f.value
+
+    dy = _v(m.dividend_yield) if m.dividend_yield else None
+    if f.kind == "dividend_min":
+        return dy is not None and dy >= f.value
+    if f.kind == "dividend_max":
+        return dy is not None and dy <= f.value
+
+    vol = _v(m.avg_daily_volume)
+    if f.kind == "volume_min":
+        return vol is not None and vol >= f.value
+    if f.kind == "volume_max":
+        return vol is not None and vol <= f.value
+
     rsi = _v(m.rsi14)
     if f.kind == "rsi_min":
         return rsi is not None and rsi >= f.value
@@ -113,24 +145,63 @@ def _check_metric(m: StockMetrics, f: Filter) -> bool:
     if f.kind == "perf5d_max":
         return p5 is not None and p5 <= f.value
 
+    r14 = _v(m.roc14)
+    if f.kind == "roc14_min":
+        return r14 is not None and r14 >= f.value
+    if f.kind == "roc14_max":
+        return r14 is not None and r14 <= f.value
+
+    r21 = _v(m.roc21)
+    if f.kind == "roc21_min":
+        return r21 is not None and r21 >= f.value
+    if f.kind == "roc21_max":
+        return r21 is not None and r21 <= f.value
+
     pct_low = _v(m.percent_from_low)
+    if f.kind == "pct_from_low_min":
+        return pct_low is not None and pct_low >= f.value
     if f.kind == "pct_from_low_max":
         return pct_low is not None and pct_low <= f.value
 
+    if f.kind == "pct_from_high_max":
+        # "near 52W high" — within X% below the high
+        high = _v(m.fifty_two_week_high)
+        if price is None or high is None or high <= 0:
+            return False
+        distance_pct = (high - price) / high * 100.0
+        return distance_pct <= f.value
+
+    if f.kind == "above_ma20":
+        ma20 = _v(m.ma20)
+        return price is not None and ma20 is not None and ((price > ma20) is bool(f.value))
+    if f.kind == "above_ma50":
+        ma50 = _v(m.ma50)
+        return price is not None and ma50 is not None and ((price > ma50) is bool(f.value))
     if f.kind == "above_ma200":
         ma200 = _v(m.ma200)
-        if price is None or ma200 is None:
-            return False
-        return (price > ma200) is bool(f.value)
+        return price is not None and ma200 is not None and ((price > ma200) is bool(f.value))
 
-    if f.kind == "dividend_min":
-        dy = _v(m.dividend_yield) if m.dividend_yield else None
-        return dy is not None and dy >= f.value
+    if f.kind == "min_data_confidence":
+        if scores is None:
+            return True  # pass-through when scores not computed yet
+        s = getattr(scores, "data_confidence_score", None)
+        return s is not None and s.value >= f.value
+
+    if f.kind == "exclude_unavailable_pe":
+        return _v(m.trailing_pe) is not None
+    if f.kind == "exclude_unavailable_mcap":
+        return _v(m.market_cap_usd) is not None
+    if f.kind == "exclude_stale":
+        # Drop rows whose price freshness is "historical-only" or "unavailable".
+        f_freshness = getattr(m.price, "freshness", "unavailable")
+        return f_freshness not in ("historical-only", "unavailable")
+    if f.kind == "require_history":
+        return _v(m.ma200) is not None
 
     return True
 
 
-# ---------- Engine ------------------------------------------------------------
+# ---------- result + engine ---------------------------------------------------
 
 @dataclass
 class ScreenerResult:
@@ -140,6 +211,7 @@ class ScreenerResult:
     enriched_count: int
     failed_enrichment: int = 0
     warnings: List[str] = field(default_factory=list)
+    score_cache: dict = field(default_factory=dict)  # ticker -> StockScores
 
     def to_dict(self) -> dict:
         return {
@@ -160,20 +232,17 @@ class ScreenerEngine:
         self,
         filters: List[Filter],
         max_results: int = 200,
-        max_enrich: int = 60,
+        max_enrich: int = 80,
+        score_fn=None,
     ) -> ScreenerResult:
-        """Apply CHEAP filters → enrich survivors → apply EXPENSIVE filters.
-
-        max_enrich caps the number of network round-trips so a wide screen
-        doesn't try to enrich the whole universe at once.
-        """
+        """Apply CHEAP filters → enrich survivors → score → apply EXPENSIVE
+        filters (some of which depend on scores)."""
         rows = self.universe.rows()
         cheap = [f for f in filters if f.is_cheap()]
         expensive = [f for f in filters if not f.is_cheap()]
 
-        # Phase 1: cheap filters, no network
         survivors = [r for r in rows if all(_check_row(r, f) for f in cheap)]
-        warnings: List[str] = []
+        warnings: list = []
         if len(survivors) > max_enrich:
             warnings.append(
                 f"Filter matched {len(survivors)} candidates; enriching first {max_enrich} "
@@ -181,12 +250,22 @@ class ScreenerEngine:
             )
         to_enrich = survivors[:max_enrich]
 
-        # Phase 2: enrich (network) in parallel
         enriched = self.universe.enrich_many(to_enrich, max_workers=8)
         failed = len(to_enrich) - len(enriched)
 
-        # Phase 3: expensive filters
-        matches = [m for m in enriched if all(_check_metric(m, f) for f in expensive)]
+        # Compute scores for each enriched metric so score-based filters work.
+        score_cache: dict = {}
+        if score_fn is not None:
+            for m in enriched:
+                try:
+                    score_cache[m.security.ticker] = score_fn(m)
+                except Exception:
+                    pass
+
+        matches = [
+            m for m in enriched
+            if all(_check_metric(m, f, score_cache.get(m.security.ticker)) for f in expensive)
+        ]
         matches = matches[:max_results]
 
         return ScreenerResult(
@@ -196,4 +275,5 @@ class ScreenerEngine:
             enriched_count=len(enriched),
             failed_enrichment=failed,
             warnings=warnings,
+            score_cache=score_cache,
         )

@@ -117,6 +117,9 @@ class StockMetrics:
     earnings_date: Optional[SourcedValue] = None
     dividend_date: Optional[SourcedValue] = None
     split_date: Optional[SourcedValue] = None
+    # Optional sparkline payload — last N closes for card-view mini charts.
+    # Populated only when the caller requests it to keep responses small.
+    recent_closes: Optional[List[float]] = None
 
     def to_dict(self) -> dict:
         out: dict[str, Any] = {"security": self.security.to_dict()}

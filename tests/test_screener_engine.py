@@ -88,7 +88,7 @@ def test_screener_no_filters_returns_error_path():
 
 
 def test_preset_returns_filters():
-    filters = get_preset("value_near_low")
+    filters = get_preset("value_near_lows")
     assert len(filters) >= 2
     kinds = [f.kind for f in filters]
     assert "pct_from_low_max" in kinds
@@ -102,9 +102,93 @@ def test_preset_unknown_returns_empty():
 def test_list_presets_includes_built_ins():
     presets = list_presets()
     keys = {p["key"] for p in presets}
-    assert "value_near_low" in keys
-    assert "momentum_top" in keys
+    # PRD-required preset keys
+    assert "value_near_lows" in keys
+    assert "momentum_leaders" in keys
+    assert "quality_large_caps" in keys
+    assert "oversold_watchlist" in keys
+    assert "breakout_candidates" in keys
+    assert "data_reliable_only" in keys
     assert "indian_banks" in keys
+
+
+def test_screener_currency_filter():
+    eng = ScreenerEngine(StubUniverse())
+    res = eng.screen([Filter(kind="currency_in", value=["USD"])])
+    for m in res.matches:
+        assert m.security.currency == "USD"
+
+
+def test_screener_industry_filter():
+    eng = ScreenerEngine(StubUniverse())
+    res = eng.screen([Filter(kind="industry_in", value=["Banks"])])
+    for m in res.matches:
+        assert (m.security.industry or "").lower() == "banks"
+
+
+def test_screener_above_ma20_filter():
+    eng = ScreenerEngine(StubUniverse())
+    res = eng.screen([Filter(kind="above_ma20", value=True)])
+    for m in res.matches:
+        assert m.price.value > m.ma20.value
+
+
+def test_screener_pct_from_high_filter():
+    eng = ScreenerEngine(StubUniverse())
+    # "Within X% of 52W high" — every match must satisfy distance <= X
+    res = eng.screen([Filter(kind="pct_from_high_max", value=20.0)])
+    for m in res.matches:
+        high = m.fifty_two_week_high.value
+        price = m.price.value
+        if high is not None and price is not None and high > 0:
+            assert (high - price) / high * 100.0 <= 20.0
+
+
+def test_screener_exclude_unavailable_pe():
+    eng = ScreenerEngine(StubUniverse())
+    res = eng.screen([Filter(kind="exclude_unavailable_pe", value=True)])
+    for m in res.matches:
+        assert m.trailing_pe.value is not None
+
+
+def test_screener_score_aware_filter():
+    """min_data_confidence requires the engine to have a score_fn."""
+    from calc.scoring import score_all
+    eng = ScreenerEngine(StubUniverse())
+    # All mock metrics have freshness="mock" → confidence ~30. Filtering for >=80
+    # should yield zero matches.
+    res = eng.screen(
+        [Filter(kind="min_data_confidence", value=80.0)],
+        score_fn=lambda m: score_all({
+            "price": m.price, "market_cap_usd": m.market_cap_usd,
+            "trailing_pe": m.trailing_pe, "rsi14": m.rsi14, "roc14": m.roc14,
+            "roc21": m.roc21, "ma20": m.ma20, "ma50": m.ma50, "ma200": m.ma200,
+            "five_day_performance": m.five_day_performance,
+            "percent_from_low": m.percent_from_low,
+            "fifty_two_week_high": m.fifty_two_week_high,
+            "fifty_two_week_low": m.fifty_two_week_low,
+            "dividend_yield": m.dividend_yield, "price_to_book": m.price_to_book,
+            "avg_daily_volume": m.avg_daily_volume,
+            "security": m.security.to_dict(),
+        }),
+    )
+    assert len(res.matches) == 0
+
+
+def test_breakout_preset_uses_new_filter_kinds():
+    filters = get_preset("breakout_candidates")
+    kinds = {f.kind for f in filters}
+    assert "above_ma20" in kinds
+    assert "above_ma50" in kinds
+    assert "pct_from_high_max" in kinds
+
+
+def test_data_reliable_preset():
+    filters = get_preset("data_reliable_only")
+    kinds = {f.kind for f in filters}
+    assert "min_data_confidence" in kinds
+    assert "exclude_unavailable_pe" in kinds
+    assert "exclude_stale" in kinds
 
 
 def test_screener_result_to_dict_serialisable():

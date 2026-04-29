@@ -163,32 +163,53 @@ def _scrub_nan(obj):
     return obj
 
 
-def _filters_from_payload(payload: dict) -> list:
-    """Convert JSON {kind, value} dicts into Filter dataclasses, with input
-    validation. Reject anything that doesn't match the supported kinds."""
+VALID_FILTER_KINDS = {
+    # cheap
+    "sector_in", "country_in", "region_in", "exchange_in",
+    "currency_in", "industry_in", "listing_type_in",
+    # range / numeric
+    "price_min", "price_max", "mcap_usd_min", "mcap_usd_max",
+    "pe_min", "pe_max", "pb_min", "pb_max",
+    "dividend_min", "dividend_max",
+    "volume_min", "volume_max",
+    "rsi_min", "rsi_max",
+    "perf5d_min", "perf5d_max",
+    "roc14_min", "roc14_max", "roc21_min", "roc21_max",
+    "pct_from_low_min", "pct_from_low_max",
+    "pct_from_high_max",
+    "min_data_confidence",
+    # boolean
+    "above_ma20", "above_ma50", "above_ma200",
+    "exclude_unavailable_pe", "exclude_unavailable_mcap",
+    "exclude_stale", "require_history",
+}
+LIST_KINDS = {"sector_in", "country_in", "region_in", "exchange_in",
+              "currency_in", "industry_in", "listing_type_in"}
+BOOL_KINDS = {"above_ma20", "above_ma50", "above_ma200",
+              "exclude_unavailable_pe", "exclude_unavailable_mcap",
+              "exclude_stale", "require_history"}
+
+
+def _filters_from_payload(payload) -> list:
+    """Convert JSON [{kind, value}, ...] into Filter dataclasses with input
+    validation. Drops any unknown kinds silently."""
     if not isinstance(payload, list):
         return []
-    valid_kinds = {
-        "sector_in", "country_in", "region_in", "exchange_in",
-        "price_min", "price_max", "mcap_usd_min", "mcap_usd_max",
-        "pe_min", "pe_max", "rsi_min", "rsi_max",
-        "perf5d_min", "perf5d_max", "pct_from_low_max",
-        "above_ma200", "dividend_min",
-    }
     out = []
-    for item in payload[:32]:  # cap to prevent abuse
+    for item in payload[:48]:
         if not isinstance(item, dict):
             continue
         kind = str(item.get("kind", ""))
-        if kind not in valid_kinds:
+        if kind not in VALID_FILTER_KINDS:
             continue
         value = item.get("value")
-        # Type-coerce safely
-        if kind in ("sector_in", "country_in", "region_in", "exchange_in"):
+        if kind in LIST_KINDS:
             if not isinstance(value, list):
                 continue
-            value = [str(v)[:60] for v in value[:32]]
-        elif kind == "above_ma200":
+            value = [str(v)[:60] for v in value[:48] if v]
+            if not value:
+                continue
+        elif kind in BOOL_KINDS:
             value = bool(value)
         else:
             try:
@@ -197,6 +218,23 @@ def _filters_from_payload(payload: dict) -> list:
                 continue
         out.append(Filter(kind=kind, value=value, label=item.get("label")))
     return out
+
+
+def _scores_for_metric(m):
+    """Compute StockScores from a StockMetrics object."""
+    return score_all({
+        "price": m.price, "market_cap_usd": m.market_cap_usd,
+        "trailing_pe": m.trailing_pe, "rsi14": m.rsi14, "roc14": m.roc14,
+        "roc21": m.roc21, "ma20": m.ma20, "ma50": m.ma50, "ma200": m.ma200,
+        "five_day_performance": m.five_day_performance,
+        "percent_from_low": m.percent_from_low,
+        "fifty_two_week_high": m.fifty_two_week_high,
+        "fifty_two_week_low": m.fifty_two_week_low,
+        "dividend_yield": m.dividend_yield,
+        "price_to_book": m.price_to_book,
+        "avg_daily_volume": m.avg_daily_volume,
+        "security": m.security.to_dict(),
+    })
 
 
 @app.route("/")
@@ -258,36 +296,35 @@ def api_screener_run():
 
     if not filters:
         return jsonify({"error": "No filters provided."}), 400
-
-    # Throttle: max 30 filters
-    if len(filters) > 30:
+    if len(filters) > 48:
         return jsonify({"error": "Too many filters."}), 400
 
+    include_sparkline = bool((data or {}).get("include_sparkline", False))
+    sparkline_days = max(20, min(int((data or {}).get("sparkline_days") or 60), 250))
+
     try:
-        result = _screener_engine.screen(filters)
+        # Pass score_fn so min_data_confidence and similar score-based filters
+        # can fire during screening (engine computes scores once per ticker).
+        result = _screener_engine.screen(filters, score_fn=_scores_for_metric)
     except Exception:
         app.logger.exception("Screener run failed")
         return jsonify({"error": "Screener failed. See server logs."}), 500
 
-    # Attach scores for every match (computed cheaply on top of metrics)
     payload_matches = []
     for m in result.matches:
+        scores = result.score_cache.get(m.security.ticker) or _scores_for_metric(m)
         m_dict = m.to_dict()
-        # score_all expects a dict-shaped metrics; reuse the original SourcedValue-bearing object
-        scores = score_all({
-            "price": m.price, "market_cap_usd": m.market_cap_usd,
-            "trailing_pe": m.trailing_pe, "rsi14": m.rsi14, "roc14": m.roc14,
-            "roc21": m.roc21, "ma20": m.ma20, "ma50": m.ma50, "ma200": m.ma200,
-            "five_day_performance": m.five_day_performance,
-            "percent_from_low": m.percent_from_low,
-            "fifty_two_week_high": m.fifty_two_week_high,
-            "dividend_yield": m.dividend_yield,
-            "price_to_book": m.price_to_book,
-            "avg_daily_volume": m.avg_daily_volume,
-            "fifty_two_week_low": m.fifty_two_week_low,
-            "security": m.security.to_dict(),
-        })
         m_dict["scores"] = scores.to_dict()
+        if include_sparkline:
+            try:
+                df = _universe_service.fetch_history_for(m.security.ticker)
+                if df is not None and not df.empty:
+                    closes = [float(x) for x in df["Close"].tolist() if x == x][-sparkline_days:]
+                    m_dict["recent_closes"] = closes
+                else:
+                    m_dict["recent_closes"] = []
+            except Exception:
+                m_dict["recent_closes"] = []
         payload_matches.append(m_dict)
 
     return jsonify(_scrub_nan({

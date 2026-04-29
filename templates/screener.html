@@ -14,92 +14,227 @@
 
 <div class="screener-shell">
   <aside class="filter-panel">
-    <h2>Presets</h2>
-    <div id="preset-list" class="preset-list">
-      <div class="muted">Loading presets…</div>
+    <div class="fp-tabs">
+      <button class="fp-tab active" data-tab="presets">Presets</button>
+      <button class="fp-tab" data-tab="filters">Filters</button>
+      <button class="fp-tab" data-tab="custom">My Presets</button>
     </div>
 
-    <h2 style="margin-top: 24px;">Custom Filters</h2>
-    <div class="filter-group">
-      <label>Region</label>
-      <select id="f-region">
-        <option value="">Any</option>
-        <option>Americas</option>
-        <option>Europe</option>
-        <option>Asia</option>
-        <option>Asia-Pacific</option>
-      </select>
-    </div>
-    <div class="filter-group">
-      <label>Country</label>
-      <select id="f-country" multiple size="4">
-        <option>USA</option><option>India</option><option>UK</option>
-        <option>Germany</option><option>France</option><option>Japan</option>
-        <option>Hong Kong</option><option>South Korea</option><option>Taiwan</option>
-        <option>Singapore</option><option>Australia</option><option>China</option>
-        <option>Switzerland</option><option>Italy</option><option>Spain</option>
-        <option>Netherlands</option>
-      </select>
-    </div>
-    <div class="filter-group">
-      <label>Sector</label>
-      <select id="f-sector">
-        <option value="">Any</option>
-        <option>Technology</option><option>Healthcare</option><option>Financial Services</option>
-        <option>Consumer Cyclical</option><option>Consumer Defensive</option>
-        <option>Communication Services</option><option>Energy</option><option>Industrials</option>
-        <option>Basic Materials</option><option>Utilities</option><option>Real Estate</option>
-      </select>
-    </div>
-    <div class="filter-group">
-      <label>Market Cap (USD min)</label>
-      <select id="f-mcap">
-        <option value="">Any</option>
-        <option value="500000000">≥ $500M</option>
-        <option value="2000000000" selected>≥ $2B</option>
-        <option value="10000000000">≥ $10B (large-cap)</option>
-        <option value="50000000000">≥ $50B (mega-cap)</option>
-      </select>
-    </div>
-    <div class="filter-group">
-      <label>Trailing P/E max</label>
-      <input id="f-pe" type="number" step="0.1" min="0" placeholder="e.g. 20">
-    </div>
-    <div class="filter-group">
-      <label>RSI range</label>
-      <div class="filter-range">
-        <input id="f-rsi-min" type="number" step="1" min="0" max="100" placeholder="min">
-        <input id="f-rsi-max" type="number" step="1" min="0" max="100" placeholder="max">
+    <div class="fp-section" data-section="presets">
+      <div id="preset-list" class="preset-list">
+        <div class="muted">Loading…</div>
       </div>
     </div>
-    <div class="filter-group">
-      <label>5-day performance min (%)</label>
-      <input id="f-p5" type="number" step="0.1" placeholder="e.g. 2">
+
+    <div class="fp-section hidden" data-section="filters">
+      <details open><summary>Universe</summary>
+        <div class="filter-group">
+          <label>Region</label>
+          <select id="f-region">
+            <option value="">Any</option><option>Americas</option><option>Europe</option><option>Asia</option><option>Asia-Pacific</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Country</label>
+          <select id="f-country" multiple size="4">
+            <option>USA</option><option>India</option><option>UK</option><option>Germany</option><option>France</option>
+            <option>Japan</option><option>Hong Kong</option><option>South Korea</option><option>Taiwan</option>
+            <option>Singapore</option><option>Australia</option><option>China</option><option>Switzerland</option>
+            <option>Italy</option><option>Spain</option><option>Netherlands</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Sector</label>
+          <select id="f-sector">
+            <option value="">Any</option>
+            <option>Technology</option><option>Healthcare</option><option>Financial Services</option>
+            <option>Consumer Cyclical</option><option>Consumer Defensive</option>
+            <option>Communication Services</option><option>Energy</option><option>Industrials</option>
+            <option>Basic Materials</option><option>Utilities</option><option>Real Estate</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Industry contains</label>
+          <input id="f-industry" type="text" placeholder="e.g. Banks, Semiconductors">
+        </div>
+        <div class="filter-group">
+          <label>Currency</label>
+          <select id="f-currency" multiple size="4">
+            <option>USD</option><option>EUR</option><option>GBP</option><option>JPY</option><option>INR</option>
+            <option>HKD</option><option>KRW</option><option>TWD</option><option>SGD</option><option>AUD</option>
+            <option>CHF</option><option>CNY</option><option>SEK</option><option>NOK</option><option>DKK</option>
+          </select>
+        </div>
+      </details>
+
+      <details><summary>Price &amp; Liquidity</summary>
+        <div class="filter-group">
+          <label>Price range (local ccy)</label>
+          <div class="filter-range">
+            <input id="f-price-min" type="number" step="0.01" min="0" placeholder="min">
+            <input id="f-price-max" type="number" step="0.01" min="0" placeholder="max">
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>Market cap (USD)</label>
+          <div class="filter-range">
+            <select id="f-mcap-min">
+              <option value="">min</option>
+              <option value="500000000">≥ $500M</option>
+              <option value="2000000000" selected>≥ $2B</option>
+              <option value="10000000000">≥ $10B</option>
+              <option value="50000000000">≥ $50B</option>
+              <option value="200000000000">≥ $200M</option>
+            </select>
+            <select id="f-mcap-max">
+              <option value="">max</option>
+              <option value="10000000000">≤ $10B</option>
+              <option value="50000000000">≤ $50B</option>
+              <option value="200000000000">≤ $200B</option>
+            </select>
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>Avg daily volume</label>
+          <div class="filter-range">
+            <input id="f-vol-min" type="number" step="50000" placeholder="min">
+            <input id="f-vol-max" type="number" step="50000" placeholder="max">
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>Within X% of 52W low</label>
+          <input id="f-pct-low" type="number" step="0.5" placeholder="e.g. 10">
+        </div>
+        <div class="filter-group">
+          <label>Within X% of 52W high</label>
+          <input id="f-pct-high" type="number" step="0.5" placeholder="e.g. 5">
+        </div>
+      </details>
+
+      <details><summary>Valuation</summary>
+        <div class="filter-group">
+          <label>Trailing P/E</label>
+          <div class="filter-range">
+            <input id="f-pe-min" type="number" step="0.1" placeholder="min">
+            <input id="f-pe-max" type="number" step="0.1" placeholder="max">
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>Price/Book</label>
+          <div class="filter-range">
+            <input id="f-pb-min" type="number" step="0.1" placeholder="min">
+            <input id="f-pb-max" type="number" step="0.1" placeholder="max">
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>Dividend Yield (%)</label>
+          <div class="filter-range">
+            <input id="f-dy-min" type="number" step="0.1" placeholder="min">
+            <input id="f-dy-max" type="number" step="0.1" placeholder="max">
+          </div>
+        </div>
+      </details>
+
+      <details><summary>Momentum</summary>
+        <div class="filter-group">
+          <label>5-day Performance (%)</label>
+          <div class="filter-range">
+            <input id="f-p5-min" type="number" step="0.1" placeholder="min">
+            <input id="f-p5-max" type="number" step="0.1" placeholder="max">
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>RSI 14</label>
+          <div class="filter-range">
+            <input id="f-rsi-min" type="number" step="1" min="0" max="100" placeholder="min">
+            <input id="f-rsi-max" type="number" step="1" min="0" max="100" placeholder="max">
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>ROC 14D (%)</label>
+          <div class="filter-range">
+            <input id="f-roc14-min" type="number" step="0.1" placeholder="min">
+            <input id="f-roc14-max" type="number" step="0.1" placeholder="max">
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>ROC 21D (%)</label>
+          <div class="filter-range">
+            <input id="f-roc21-min" type="number" step="0.1" placeholder="min">
+            <input id="f-roc21-max" type="number" step="0.1" placeholder="max">
+          </div>
+        </div>
+        <div class="filter-group">
+          <label class="filter-check">
+            <input id="f-above-20" type="checkbox"> Price above 20D MA
+          </label>
+          <label class="filter-check">
+            <input id="f-above-50" type="checkbox"> Price above 50D MA
+          </label>
+          <label class="filter-check">
+            <input id="f-above-200" type="checkbox"> Price above 200D MA
+          </label>
+        </div>
+      </details>
+
+      <details><summary>Data Quality</summary>
+        <div class="filter-group">
+          <label>Min Data Confidence (0–100)</label>
+          <input id="f-min-dc" type="number" step="5" min="0" max="100" placeholder="e.g. 60">
+        </div>
+        <div class="filter-group">
+          <label class="filter-check">
+            <input id="f-no-stale" type="checkbox"> Exclude stale data
+          </label>
+          <label class="filter-check">
+            <input id="f-need-pe" type="checkbox"> Require P/E available
+          </label>
+          <label class="filter-check">
+            <input id="f-need-mcap" type="checkbox"> Require market cap available
+          </label>
+          <label class="filter-check">
+            <input id="f-need-history" type="checkbox"> Require 200D history
+          </label>
+        </div>
+      </details>
+
+      <button id="run-screen" class="btn-primary" style="margin-top: 8px;">Run Screen</button>
+      <button id="save-preset" class="btn-ghost">★ Save current filters as preset</button>
+      <button id="clear-filters" class="btn-ghost">Clear</button>
     </div>
-    <div class="filter-group">
-      <label>Within X% of 52W low</label>
-      <input id="f-pct-low" type="number" step="0.1" placeholder="e.g. 10">
+
+    <div class="fp-section hidden" data-section="custom">
+      <div id="custom-presets-list" class="preset-list"></div>
+      <p class="muted" style="font-size: 11px; margin-top: 8px;">
+        Custom presets are saved locally in this browser only.
+      </p>
     </div>
-    <div class="filter-group">
-      <label class="filter-check">
-        <input id="f-above-200" type="checkbox"> Price above 200D MA
-      </label>
-    </div>
-    <button id="run-screen" class="btn-primary">Run Screen</button>
-    <button id="clear-filters" class="btn-ghost">Clear</button>
   </aside>
 
   <section class="results-panel">
     <header class="results-header">
       <div>
         <h1 id="results-title">Run a screen to see results</h1>
-        <p id="results-subtitle" class="muted">Pick a preset or build custom filters.</p>
+        <p id="results-subtitle" class="muted">Pick a preset, build custom filters, or save your own.</p>
       </div>
-      <div class="view-toggle">
-        <button class="vt-btn active" data-view="table">📋 Table</button>
-        <button class="vt-btn" data-view="cards">▦ Cards</button>
+      <div class="rh-toolbar">
+        <button class="vt-btn active" data-view="table" id="vt-table">📋 Table</button>
+        <button class="vt-btn" data-view="cards" id="vt-cards">▦ Cards</button>
+        <button class="btn-ghost" id="cols-btn">⚙ Columns</button>
+        <button class="btn-ghost" id="compact-btn">↔ Compact</button>
       </div>
     </header>
+
+    <div id="cols-panel" class="cols-panel hidden"></div>
+
+    <div id="bulk-bar" class="bulk-bar hidden">
+      <span id="bulk-count">0</span> selected
+      <button class="btn-ghost" id="bulk-watchlist">+ Add to watchlist</button>
+      <button class="btn-ghost" id="bulk-compare">⇄ Compare</button>
+      <button class="btn-ghost" id="bulk-csv">↓ CSV</button>
+      <button class="btn-ghost" id="bulk-json">↓ JSON</button>
+      <button class="btn-ghost" id="bulk-clear">Clear</button>
+    </div>
 
     <div id="loading" class="loading hidden">
       <div class="spinner"></div>
@@ -107,7 +242,6 @@
     </div>
 
     <div id="error-box" class="error hidden"></div>
-
     <div id="warnings-box" class="warnings hidden"></div>
 
     <div id="results-table-wrap" class="hidden">
@@ -118,6 +252,14 @@
     </div>
 
     <div id="results-cards" class="results-cards hidden"></div>
+
+    <div id="why-modal" class="modal hidden">
+      <div class="modal-inner">
+        <h2 id="why-title">Why this score?</h2>
+        <div id="why-body"></div>
+        <button class="btn-ghost" id="why-close">Close</button>
+      </div>
+    </div>
 
     <p class="disclaimer">
       <strong>Data disclaimer.</strong> Free-source market data may be delayed,
@@ -132,7 +274,7 @@
 const APP_BASE = {{ request.script_root|tojson }};
 const $ = (id) => document.getElementById(id);
 
-// ---------- helpers ----------
+// ---------- formatting helpers ----------
 const fmtN = (n, dec = 2) => (n == null ? "—" : Number(n).toFixed(dec));
 const fmtPct = (n, dec = 2) => (n == null ? "—" : (n >= 0 ? "+" : "") + Number(n).toFixed(dec) + "%");
 const fmtMcap = (n, sym = "$") => {
@@ -149,58 +291,110 @@ const fmtVol = (n) => {
   return Number(n).toFixed(0);
 };
 const cls = (n) => (n == null ? "muted" : n > 0 ? "green" : n < 0 ? "red" : "muted");
-const flag = (c) => ({
-  "USA":"🇺🇸","India":"🇮🇳","UK":"🇬🇧","Germany":"🇩🇪","France":"🇫🇷",
-  "Netherlands":"🇳🇱","Switzerland":"🇨🇭","Italy":"🇮🇹","Spain":"🇪🇸",
-  "Sweden":"🇸🇪","Finland":"🇫🇮","Denmark":"🇩🇰","Norway":"🇳🇴",
-  "Japan":"🇯🇵","Hong Kong":"🇭🇰","South Korea":"🇰🇷","Taiwan":"🇹🇼",
-  "Singapore":"🇸🇬","Australia":"🇦🇺","China":"🇨🇳","Canada":"🇨🇦",
-}[c] || "🌐");
+const flag = (c) => ({"USA":"🇺🇸","India":"🇮🇳","UK":"🇬🇧","Germany":"🇩🇪","France":"🇫🇷","Netherlands":"🇳🇱","Switzerland":"🇨🇭","Italy":"🇮🇹","Spain":"🇪🇸","Sweden":"🇸🇪","Finland":"🇫🇮","Denmark":"🇩🇰","Norway":"🇳🇴","Japan":"🇯🇵","Hong Kong":"🇭🇰","South Korea":"🇰🇷","Taiwan":"🇹🇼","Singapore":"🇸🇬","Australia":"🇦🇺","China":"🇨🇳","Canada":"🇨🇦"}[c] || "🌐");
 
 const sourceBadge = (sv) => {
   if (!sv) return '<span class="src-badge unavailable">—</span>';
   const f = sv.freshness || "unavailable";
-  const cls = "src-badge " + f.replace(/[^a-z]/g, "-");
+  const cssCls = "src-badge " + f.replace(/[^a-z]/g, "-");
   const tip = `${sv.source_name || "?"} • ${sv.confidence || "?"} confidence`;
-  const label = ({
-    "real-time": "live", "delayed": "delayed", "previous-close": "prev close",
-    "historical-only": "historical", "cached": "cached", "unavailable": "—",
-    "mock": "MOCK",
-  })[f] || f;
-  return `<span class="${cls}" title="${tip}">${label}</span>`;
+  const label = ({"real-time":"live","delayed":"delayed","previous-close":"prev","historical-only":"historical","cached":"cached","unavailable":"—","mock":"MOCK"})[f] || f;
+  return `<span class="${cssCls}" title="${tip}">${label}</span>`;
 };
 
-const scoreBar = (s, max) => {
+const scoreBar100 = (s, ticker, scoreKey) => {
   if (!s) return "—";
-  const pct = Math.max(0, Math.min(100, (s.value / max) * 100));
-  const cls = "score-bar " + (s.label || "Mixed").toLowerCase();
-  return `<div class="${cls}" title="${(s.reasons || []).join('; ')}">
+  const pct = Math.max(0, Math.min(100, s.value));
+  const labelCls = (s.label || "Mixed").toLowerCase();
+  // Risk score is "higher = riskier" — invert visual cue
+  const visualCls = scoreKey === "risk_score"
+    ? (s.value > 65 ? "poor" : s.value > 40 ? "mixed" : "excellent")
+    : labelCls;
+  return `<div class="score-bar ${visualCls}" data-ticker="${ticker}" data-score="${scoreKey}">
     <div class="score-fill" style="width:${pct}%"></div>
-    <span class="score-text">${s.value.toFixed(1)} · ${s.label}</span>
+    <span class="score-text">${s.value.toFixed(0)} · ${s.label}</span>
   </div>`;
 };
+
+function sparkline(closes, w = 100, h = 28) {
+  if (!closes || closes.length < 2) return '<span class="muted">—</span>';
+  const min = Math.min(...closes), max = Math.max(...closes);
+  const r = (max - min) || 1;
+  const sx = w / (closes.length - 1);
+  const pts = closes.map((c, i) => `${(i*sx).toFixed(1)},${(h - ((c-min)/r)*h).toFixed(1)}`).join(" ");
+  const colour = closes[closes.length-1] >= closes[0] ? "#3fb950" : "#f85149";
+  const area = `M0,${h} L${pts.replace(/ /g," L")} L${w},${h} Z`;
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" preserveAspectRatio="none">
+    <path d="${area}" fill="${colour}" fill-opacity="0.12"/>
+    <polyline points="${pts}" fill="none" stroke="${colour}" stroke-width="1.4"/></svg>`;
+}
 
 // ---------- presets ----------
 async function loadPresets() {
   try {
     const res = await fetch(APP_BASE + "/api/screener/presets");
     const data = await res.json();
-    const list = $("preset-list");
-    list.innerHTML = data.presets.map((p) => `
+    $("preset-list").innerHTML = data.presets.map((p) => `
       <button class="preset-card" data-key="${p.key}">
         <div class="preset-name">${p.name}</div>
         <div class="preset-desc">${p.description}</div>
         <div class="preset-tags">${p.filter_labels.map((l) => `<span class="preset-tag">${l}</span>`).join("")}</div>
       </button>`).join("");
-    list.querySelectorAll(".preset-card").forEach((b) =>
+    $("preset-list").querySelectorAll(".preset-card").forEach((b) =>
       b.onclick = () => runScreen({ preset: b.dataset.key, presetName: b.querySelector(".preset-name").textContent })
     );
   } catch (e) {
-    $("preset-list").innerHTML = `<div class="error">Failed to load presets.</div>`;
+    $("preset-list").innerHTML = '<div class="error">Failed to load presets.</div>';
   }
+  renderCustomPresets();
 }
 
-// ---------- custom filter assembly ----------
+// ---------- custom presets (localStorage) ----------
+const CUSTOM_KEY = "equityscope.customPresets";
+function loadCustomPresets() {
+  try {
+    return JSON.parse(localStorage.getItem(CUSTOM_KEY) || "{}");
+  } catch (e) { return {}; }
+}
+function saveCustomPresets(obj) {
+  localStorage.setItem(CUSTOM_KEY, JSON.stringify(obj));
+}
+function renderCustomPresets() {
+  const presets = loadCustomPresets();
+  const keys = Object.keys(presets);
+  if (!keys.length) {
+    $("custom-presets-list").innerHTML = '<div class="muted">No custom presets yet. Build filters then "Save current filters as preset".</div>';
+    return;
+  }
+  $("custom-presets-list").innerHTML = keys.map((k) => {
+    const p = presets[k];
+    return `<div class="preset-card custom-preset">
+      <div class="preset-name" data-key="${k}">${p.name}</div>
+      <div class="preset-desc">${p.filters.length} filter(s)</div>
+      <div class="preset-tags">${p.filters.map((f) => `<span class="preset-tag">${f.label || f.kind}</span>`).join("")}</div>
+      <div class="custom-actions">
+        <button class="btn-ghost mini" data-run="${k}">Run</button>
+        <button class="btn-ghost mini" data-del="${k}">Delete</button>
+      </div>
+    </div>`;
+  }).join("");
+  $("custom-presets-list").querySelectorAll("[data-run]").forEach((b) =>
+    b.onclick = () => {
+      const p = loadCustomPresets()[b.dataset.run];
+      runScreen({ filters: p.filters, presetName: p.name });
+    }
+  );
+  $("custom-presets-list").querySelectorAll("[data-del]").forEach((b) =>
+    b.onclick = () => {
+      const presets = loadCustomPresets();
+      delete presets[b.dataset.del];
+      saveCustomPresets(presets);
+      renderCustomPresets();
+    }
+  );
+}
+
+// ---------- filter assembly ----------
 function customFilters() {
   const filters = [];
   const country = Array.from($("f-country").selectedOptions).map((o) => o.value).filter(Boolean);
@@ -209,23 +403,50 @@ function customFilters() {
   if (region) filters.push({ kind: "region_in", value: [region], label: region });
   const sector = $("f-sector").value;
   if (sector) filters.push({ kind: "sector_in", value: [sector], label: sector });
-  const mcap = $("f-mcap").value;
-  if (mcap) filters.push({ kind: "mcap_usd_min", value: parseFloat(mcap), label: `Mcap ≥ $${(parseFloat(mcap)/1e9).toFixed(0)}B` });
-  const pe = $("f-pe").value;
-  if (pe) filters.push({ kind: "pe_max", value: parseFloat(pe), label: `P/E ≤ ${pe}` });
-  const rmin = $("f-rsi-min").value;
-  if (rmin !== "") filters.push({ kind: "rsi_min", value: parseFloat(rmin), label: `RSI ≥ ${rmin}` });
-  const rmax = $("f-rsi-max").value;
-  if (rmax !== "") filters.push({ kind: "rsi_max", value: parseFloat(rmax), label: `RSI ≤ ${rmax}` });
-  const p5 = $("f-p5").value;
-  if (p5) filters.push({ kind: "perf5d_min", value: parseFloat(p5), label: `5D ≥ ${p5}%` });
-  const pl = $("f-pct-low").value;
-  if (pl) filters.push({ kind: "pct_from_low_max", value: parseFloat(pl), label: `≤ ${pl}% from 52W low` });
+  const industry = $("f-industry").value.trim();
+  if (industry) filters.push({ kind: "industry_in", value: [industry], label: industry });
+  const ccy = Array.from($("f-currency").selectedOptions).map((o) => o.value).filter(Boolean);
+  if (ccy.length) filters.push({ kind: "currency_in", value: ccy, label: ccy.join(", ") });
+  const num = (id) => { const v = $(id).value; return v === "" ? null : parseFloat(v); };
+  const pmin = num("f-price-min"); if (pmin !== null) filters.push({ kind: "price_min", value: pmin, label: `Price ≥ ${pmin}` });
+  const pmax = num("f-price-max"); if (pmax !== null) filters.push({ kind: "price_max", value: pmax, label: `Price ≤ ${pmax}` });
+  const mmin = $("f-mcap-min").value; if (mmin) filters.push({ kind: "mcap_usd_min", value: parseFloat(mmin), label: `Mcap ≥ $${(parseFloat(mmin)/1e9).toFixed(0)}B` });
+  const mmax = $("f-mcap-max").value; if (mmax) filters.push({ kind: "mcap_usd_max", value: parseFloat(mmax), label: `Mcap ≤ $${(parseFloat(mmax)/1e9).toFixed(0)}B` });
+  const vmin = num("f-vol-min"); if (vmin !== null) filters.push({ kind: "volume_min", value: vmin, label: `Vol ≥ ${(vmin/1e3).toFixed(0)}K` });
+  const vmax = num("f-vol-max"); if (vmax !== null) filters.push({ kind: "volume_max", value: vmax, label: `Vol ≤ ${(vmax/1e3).toFixed(0)}K` });
+  const pemin = num("f-pe-min"); if (pemin !== null) filters.push({ kind: "pe_min", value: pemin, label: `P/E ≥ ${pemin}` });
+  const pemax = num("f-pe-max"); if (pemax !== null) filters.push({ kind: "pe_max", value: pemax, label: `P/E ≤ ${pemax}` });
+  const pbmin = num("f-pb-min"); if (pbmin !== null) filters.push({ kind: "pb_min", value: pbmin, label: `P/B ≥ ${pbmin}` });
+  const pbmax = num("f-pb-max"); if (pbmax !== null) filters.push({ kind: "pb_max", value: pbmax, label: `P/B ≤ ${pbmax}` });
+  const dymin = num("f-dy-min"); if (dymin !== null) filters.push({ kind: "dividend_min", value: dymin, label: `Div ≥ ${dymin}%` });
+  const dymax = num("f-dy-max"); if (dymax !== null) filters.push({ kind: "dividend_max", value: dymax, label: `Div ≤ ${dymax}%` });
+  const p5min = num("f-p5-min"); if (p5min !== null) filters.push({ kind: "perf5d_min", value: p5min, label: `5D ≥ ${p5min}%` });
+  const p5max = num("f-p5-max"); if (p5max !== null) filters.push({ kind: "perf5d_max", value: p5max, label: `5D ≤ ${p5max}%` });
+  const rmin = num("f-rsi-min"); if (rmin !== null) filters.push({ kind: "rsi_min", value: rmin, label: `RSI ≥ ${rmin}` });
+  const rmax = num("f-rsi-max"); if (rmax !== null) filters.push({ kind: "rsi_max", value: rmax, label: `RSI ≤ ${rmax}` });
+  const r14min = num("f-roc14-min"); if (r14min !== null) filters.push({ kind: "roc14_min", value: r14min, label: `ROC14 ≥ ${r14min}%` });
+  const r14max = num("f-roc14-max"); if (r14max !== null) filters.push({ kind: "roc14_max", value: r14max, label: `ROC14 ≤ ${r14max}%` });
+  const r21min = num("f-roc21-min"); if (r21min !== null) filters.push({ kind: "roc21_min", value: r21min, label: `ROC21 ≥ ${r21min}%` });
+  const r21max = num("f-roc21-max"); if (r21max !== null) filters.push({ kind: "roc21_max", value: r21max, label: `ROC21 ≤ ${r21max}%` });
+  const pl = num("f-pct-low"); if (pl !== null) filters.push({ kind: "pct_from_low_max", value: pl, label: `≤ ${pl}% from 52W low` });
+  const ph = num("f-pct-high"); if (ph !== null) filters.push({ kind: "pct_from_high_max", value: ph, label: `Within ${ph}% of 52W high` });
+  if ($("f-above-20").checked) filters.push({ kind: "above_ma20", value: true, label: "Price > 20D MA" });
+  if ($("f-above-50").checked) filters.push({ kind: "above_ma50", value: true, label: "Price > 50D MA" });
   if ($("f-above-200").checked) filters.push({ kind: "above_ma200", value: true, label: "Price > 200D MA" });
+  const dc = num("f-min-dc"); if (dc !== null) filters.push({ kind: "min_data_confidence", value: dc, label: `Data confidence ≥ ${dc}` });
+  if ($("f-no-stale").checked) filters.push({ kind: "exclude_stale", value: true, label: "Exclude stale" });
+  if ($("f-need-pe").checked) filters.push({ kind: "exclude_unavailable_pe", value: true, label: "P/E available" });
+  if ($("f-need-mcap").checked) filters.push({ kind: "exclude_unavailable_mcap", value: true, label: "Mcap available" });
+  if ($("f-need-history").checked) filters.push({ kind: "require_history", value: true, label: "200D history" });
   return filters;
 }
 
 // ---------- run ----------
+let lastResults = null;
+let currentSort = { col: "value_score", dir: "desc" };
+let currentView = "table";
+let compact = false;
+
 async function runScreen(opts = {}) {
   $("error-box").classList.add("hidden");
   $("warnings-box").classList.add("hidden");
@@ -234,10 +455,13 @@ async function runScreen(opts = {}) {
   $("loading").classList.remove("hidden");
   $("results-title").textContent = opts.presetName || "Custom Screen";
   $("results-subtitle").textContent = "Running…";
+  selected.clear();
+  updateBulkBar();
 
-  const body = opts.preset
-    ? { preset: opts.preset }
-    : { filters: customFilters() };
+  const body = opts.preset ? { preset: opts.preset }
+            : { filters: opts.filters || customFilters() };
+  body.include_sparkline = (currentView === "cards");
+  body.sparkline_days = 60;
 
   if (!opts.preset && !body.filters.length) {
     $("loading").classList.add("hidden");
@@ -267,59 +491,78 @@ async function runScreen(opts = {}) {
   }
 }
 
-// ---------- render ----------
-let lastResults = null;
-let currentSort = { col: "value_score", dir: "desc" };
-
 function renderResults(data) {
   lastResults = data;
   $("results-subtitle").textContent =
-    `${data.matches.length} match(es) · scanned ${data.after_cheap_filters} of ${data.total_universe} universe candidates · enriched ${data.enriched_count}`;
-
+    `${data.matches.length} match(es) · scanned ${data.after_cheap_filters} of ${data.total_universe} candidates · enriched ${data.enriched_count}`;
   if (data.warnings && data.warnings.length) {
     $("warnings-box").innerHTML = data.warnings.map((w) => `<div>⚠️ ${w}</div>`).join("");
     $("warnings-box").classList.remove("hidden");
   }
-
   if (!data.matches.length) {
-    $("results-table-wrap").classList.add("hidden");
-    $("results-cards").classList.add("hidden");
     $("error-box").textContent = "No stocks matched. Loosen your filters.";
     $("error-box").classList.remove("hidden");
     return;
   }
-
   if (currentView === "table") renderTable();
   else renderCards();
 }
 
-const starBtn = (ticker) => {
-  const starred = window.Watchlists && window.Watchlists.allTickers().has(ticker);
-  return `<button class="star-btn ${starred ? 'on' : ''}" data-ticker="${ticker}" title="${starred ? 'In a watchlist' : 'Add to watchlist'}">${starred ? '★' : '☆'}</button>`;
-};
-
+// ---------- columns ----------
 const COLUMNS = [
-  { key: "star",      label: "",        get: (m) => starBtn(m.security.ticker) },
-  { key: "ticker",    label: "Ticker",  get: (m) => m.security.ticker, sortVal: (m) => m.security.ticker },
-  { key: "company",   label: "Company", get: (m) => `${flag(m.security.country)} ${m.security.company_name || m.security.ticker}` },
-  { key: "country",   label: "Country", get: (m) => m.security.country || "—", sortVal: (m) => m.security.country || "" },
-  { key: "sector",    label: "Sector",  get: (m) => m.security.sector || "—", sortVal: (m) => m.security.sector || "" },
-  { key: "price",     label: "Price",   get: (m) => `${m.security.currency || ""} ${fmtN(m.price.value)}`, sortVal: (m) => m.price.value, src: "price" },
-  { key: "mcap",      label: "Mcap (USD)", get: (m) => fmtMcap(m.market_cap_usd.value), sortVal: (m) => m.market_cap_usd.value, src: "market_cap_usd" },
-  { key: "pe",        label: "P/E",     get: (m) => fmtN(m.trailing_pe.value, 1), sortVal: (m) => m.trailing_pe.value, src: "trailing_pe" },
-  { key: "p5",        label: "5D %",    get: (m) => `<span class="${cls(m.five_day_performance.value)}">${fmtPct(m.five_day_performance.value)}</span>`, sortVal: (m) => m.five_day_performance.value },
-  { key: "rsi",       label: "RSI 14",  get: (m) => fmtN(m.rsi14.value, 1), sortVal: (m) => m.rsi14.value },
-  { key: "pct_low",   label: "% from low", get: (m) => fmtPct(m.percent_from_low.value), sortVal: (m) => m.percent_from_low.value },
-  { key: "value_score",    label: "Value",    get: (m) => scoreBar(m.scores.value_score, 4), sortVal: (m) => m.scores.value_score.value },
-  { key: "momentum_score", label: "Momentum", get: (m) => scoreBar(m.scores.momentum_score, 7), sortVal: (m) => m.scores.momentum_score.value },
-  { key: "data",      label: "Data",    get: (m) => sourceBadge(m.price), sortVal: (m) => m.price.confidence },
+  { key: "select",     label: "",          group: "Overview", get: (m) => `<input type="checkbox" class="row-select" data-ticker="${m.security.ticker}">`, sortable: false, alwaysOn: true },
+  { key: "star",       label: "",          group: "Overview", get: (m) => starBtn(m.security.ticker), sortable: false, alwaysOn: true },
+  { key: "ticker",     label: "Ticker",    group: "Overview", get: (m) => `<strong>${m.security.ticker}</strong>`, sortVal: (m) => m.security.ticker, alwaysOn: true },
+  { key: "company",    label: "Company",   group: "Overview", get: (m) => `${flag(m.security.country)} ${m.security.company_name || m.security.ticker}`, sortVal: (m) => m.security.company_name || "" },
+  { key: "exchange",   label: "Exchange",  group: "Overview", get: (m) => m.security.exchange || "—" },
+  { key: "country",    label: "Country",   group: "Overview", get: (m) => m.security.country || "—" },
+  { key: "sector",     label: "Sector",    group: "Overview", get: (m) => m.security.sector || "—" },
+  { key: "industry",   label: "Industry",  group: "Overview", get: (m) => m.security.industry || "—" },
+  { key: "currency",   label: "Ccy",       group: "Overview", get: (m) => m.security.currency || "—" },
+  { key: "price",      label: "Price",     group: "Valuation", get: (m) => `${m.security.currency || ""} ${fmtN(m.price.value)}`, sortVal: (m) => m.price.value, src: "price" },
+  { key: "mcap_usd",   label: "Mcap (USD)",group: "Valuation", get: (m) => fmtMcap(m.market_cap_usd.value), sortVal: (m) => m.market_cap_usd.value, src: "market_cap_usd" },
+  { key: "pe",         label: "P/E",       group: "Valuation", get: (m) => fmtN(m.trailing_pe.value, 1), sortVal: (m) => m.trailing_pe.value, src: "trailing_pe" },
+  { key: "pct_low",    label: "% from low",group: "Valuation", get: (m) => fmtPct(m.percent_from_low.value), sortVal: (m) => m.percent_from_low.value },
+  { key: "p5",         label: "5D %",      group: "Momentum",  get: (m) => `<span class="${cls(m.five_day_performance.value)}">${fmtPct(m.five_day_performance.value)}</span>`, sortVal: (m) => m.five_day_performance.value },
+  { key: "rsi",        label: "RSI 14",    group: "Momentum",  get: (m) => fmtN(m.rsi14.value, 1), sortVal: (m) => m.rsi14.value },
+  { key: "roc14",      label: "ROC 14D",   group: "Momentum",  get: (m) => fmtPct(m.roc14.value), sortVal: (m) => m.roc14.value },
+  { key: "roc21",      label: "ROC 21D",   group: "Momentum",  get: (m) => fmtPct(m.roc21.value), sortVal: (m) => m.roc21.value },
+  { key: "value_score",    label: "Value",    group: "Quality", get: (m) => scoreBar100(m.scores.value_score, m.security.ticker, "value_score"), sortVal: (m) => m.scores.value_score.value },
+  { key: "momentum_score", label: "Momentum", group: "Quality", get: (m) => scoreBar100(m.scores.momentum_score, m.security.ticker, "momentum_score"), sortVal: (m) => m.scores.momentum_score.value },
+  { key: "quality_score",  label: "Quality",  group: "Quality", get: (m) => scoreBar100(m.scores.quality_score, m.security.ticker, "quality_score"), sortVal: (m) => m.scores.quality_score.value },
+  { key: "risk_score",     label: "Risk",     group: "Risk",    get: (m) => scoreBar100(m.scores.risk_score, m.security.ticker, "risk_score"), sortVal: (m) => m.scores.risk_score.value },
+  { key: "data",       label: "Confidence", group: "Data",    get: (m) => scoreBar100(m.scores.data_confidence_score, m.security.ticker, "data_confidence_score"), sortVal: (m) => m.scores.data_confidence_score.value },
+  { key: "src",        label: "Src",        group: "Data",    get: (m) => sourceBadge(m.price), sortVal: (m) => m.price.confidence },
 ];
+
+// Visible column state (default: hide industry, exchange, currency to keep dense)
+const COL_STATE_KEY = "equityscope.colState";
+let visibleCols = (() => {
+  try {
+    const cached = JSON.parse(localStorage.getItem(COL_STATE_KEY) || "null");
+    if (cached) return cached;
+  } catch (e) {}
+  const def = {};
+  COLUMNS.forEach((c) => { def[c.key] = !["industry", "exchange", "currency", "roc21"].includes(c.key); });
+  return def;
+})();
+
+function persistColState() {
+  localStorage.setItem(COL_STATE_KEY, JSON.stringify(visibleCols));
+}
+
+const starBtn = (t) => {
+  const on = window.Watchlists && window.Watchlists.allTickers().has(t);
+  return `<button class="star-btn ${on ? "on" : ""}" data-ticker="${t}">${on ? "★" : "☆"}</button>`;
+};
 
 function renderTable() {
   $("results-cards").classList.add("hidden");
   $("results-table-wrap").classList.remove("hidden");
+  const cols = COLUMNS.filter((c) => visibleCols[c.key]);
   const thead = $("results-thead");
-  thead.innerHTML = COLUMNS.map((c) => {
+  thead.innerHTML = cols.map((c) => {
+    if (c.sortable === false) return `<th>${c.label}</th>`;
     const arrow = currentSort.col === c.key ? (currentSort.dir === "asc" ? " ↑" : " ↓") : "";
     return `<th data-col="${c.key}" class="sortable">${c.label}${arrow}</th>`;
   }).join("");
@@ -331,45 +574,63 @@ function renderTable() {
       renderTable();
     }
   );
-
-  const sortKey = COLUMNS.find((c) => c.key === currentSort.col);
+  const sortKey = COLUMNS.find((c) => c.key === currentSort.col) || COLUMNS[2];
   const sorted = [...lastResults.matches].sort((a, b) => {
-    const av = sortKey.sortVal ? sortKey.sortVal(a) : sortKey.get(a);
-    const bv = sortKey.sortVal ? sortKey.sortVal(b) : sortKey.get(b);
+    const av = sortKey.sortVal ? sortKey.sortVal(a) : null;
+    const bv = sortKey.sortVal ? sortKey.sortVal(b) : null;
     if (av == null) return 1;
     if (bv == null) return -1;
     if (av < bv) return currentSort.dir === "asc" ? -1 : 1;
     if (av > bv) return currentSort.dir === "asc" ? 1 : -1;
     return 0;
   });
-
   const tbody = $("results-tbody");
   tbody.innerHTML = sorted.map((m) => `
-    <tr data-ticker="${m.security.ticker}">
-      ${COLUMNS.map((c) => `<td>${c.get(m)}</td>`).join("")}
+    <tr data-ticker="${m.security.ticker}" class="${selected.has(m.security.ticker) ? "selected" : ""}">
+      ${cols.map((c) => `<td>${c.get(m)}</td>`).join("")}
     </tr>`).join("");
-  tbody.querySelectorAll("tr").forEach((tr) => {
+  attachRowHandlers(tbody, sorted);
+  document.body.classList.toggle("compact", compact);
+}
+
+function attachRowHandlers(scope, sorted) {
+  scope.querySelectorAll("tr").forEach((tr) => {
     tr.onclick = (e) => {
-      // ignore clicks on the star button — that toggles watchlist instead
-      if (e.target.classList.contains("star-btn")) return;
+      if (e.target.closest("input, button, .star-btn, .score-bar")) return;
       window.location.href = APP_BASE + "/app?ticker=" + encodeURIComponent(tr.dataset.ticker);
     };
   });
-  tbody.querySelectorAll(".star-btn").forEach((btn) => {
+  scope.querySelectorAll(".star-btn").forEach((btn) =>
     btn.onclick = (e) => {
-      e.stopPropagation();
+      e.preventDefault(); e.stopPropagation();
       const t = btn.dataset.ticker;
-      if (Watchlists.allTickers().has(t)) {
-        // Remove from every list
-        Watchlists.names().forEach((n) => Watchlists.remove(t, n));
-      } else {
-        Watchlists.add(t);
-      }
-      renderTable();  // re-render to update star state
-    };
-  });
+      if (Watchlists.allTickers().has(t)) Watchlists.names().forEach((n) => Watchlists.remove(t, n));
+      else Watchlists.add(t);
+      currentView === "table" ? renderTable() : renderCards();
+    }
+  );
+  scope.querySelectorAll(".row-select").forEach((cb) =>
+    cb.onclick = (e) => {
+      e.stopPropagation();
+      const t = cb.dataset.ticker;
+      if (cb.checked) selected.add(t); else selected.delete(t);
+      const row = cb.closest("tr") || cb.closest(".result-card-wrap");
+      if (row) row.classList.toggle("selected", cb.checked);
+      updateBulkBar();
+    }
+  );
+  scope.querySelectorAll(".score-bar").forEach((bar) =>
+    bar.onclick = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const t = bar.dataset.ticker;
+      const k = bar.dataset.score;
+      const m = lastResults.matches.find((x) => x.security.ticker === t);
+      if (m) showWhy(m, k);
+    }
+  );
 }
 
+// ---------- card view ----------
 function renderCards() {
   $("results-table-wrap").classList.add("hidden");
   $("results-cards").classList.remove("hidden");
@@ -377,66 +638,207 @@ function renderCards() {
     (b.scores.value_score.value + b.scores.momentum_score.value) -
     (a.scores.value_score.value + a.scores.momentum_score.value)
   );
-  $("results-cards").innerHTML = sorted.map((m) => `
-    <div class="result-card-wrap">
-      ${starBtn(m.security.ticker)}
-      <a class="result-card" href="${APP_BASE + '/app?ticker=' + encodeURIComponent(m.security.ticker)}">
-      <div class="rc-head">
-        <div class="rc-ticker">${flag(m.security.country)} <strong>${m.security.ticker}</strong></div>
-        ${sourceBadge(m.price)}
-      </div>
-      <div class="rc-name">${m.security.company_name || m.security.ticker}</div>
-      <div class="rc-meta">${m.security.exchange || "—"} · ${m.security.sector || "—"}</div>
-      <div class="rc-grid">
-        <div><span class="lbl">Price</span><span>${m.security.currency || ""} ${fmtN(m.price.value)}</span></div>
-        <div><span class="lbl">Mcap</span><span>${fmtMcap(m.market_cap_usd.value)}</span></div>
-        <div><span class="lbl">P/E</span><span>${fmtN(m.trailing_pe.value, 1)}</span></div>
-        <div><span class="lbl">5D</span><span class="${cls(m.five_day_performance.value)}">${fmtPct(m.five_day_performance.value)}</span></div>
-        <div><span class="lbl">RSI</span><span>${fmtN(m.rsi14.value, 1)}</span></div>
-        <div><span class="lbl">% from low</span><span>${fmtPct(m.percent_from_low.value)}</span></div>
-      </div>
-      <div class="rc-scores">
-        ${scoreBar(m.scores.value_score, 4)}
-        ${scoreBar(m.scores.momentum_score, 7)}
-      </div>
-    </a></div>`).join("");
-  // wire the star buttons inside cards too
-  $("results-cards").querySelectorAll(".star-btn").forEach((btn) => {
-    btn.onclick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const t = btn.dataset.ticker;
-      if (Watchlists.allTickers().has(t)) {
-        Watchlists.names().forEach((n) => Watchlists.remove(t, n));
-      } else {
-        Watchlists.add(t);
-      }
-      renderCards();
-    };
-  });
+  $("results-cards").innerHTML = sorted.map((m) => {
+    const t = m.security.ticker;
+    const isSel = selected.has(t);
+    return `<div class="result-card-wrap ${isSel ? "selected" : ""}">
+      <input type="checkbox" class="card-select row-select" data-ticker="${t}" ${isSel ? "checked" : ""}>
+      ${starBtn(t)}
+      <a class="result-card" href="${APP_BASE + '/app?ticker=' + encodeURIComponent(t)}">
+        <div class="rc-head">
+          <div class="rc-ticker">${flag(m.security.country)} <strong>${t}</strong></div>
+          ${sourceBadge(m.price)}
+        </div>
+        <div class="rc-name">${m.security.company_name || t}</div>
+        <div class="rc-meta">${m.security.exchange || "—"} · ${m.security.sector || "—"}</div>
+        <div class="rc-spark">${sparkline(m.recent_closes || [])}</div>
+        <div class="rc-grid">
+          <div><span class="lbl">Price</span><span>${m.security.currency || ""} ${fmtN(m.price.value)}</span></div>
+          <div><span class="lbl">Mcap</span><span>${fmtMcap(m.market_cap_usd.value)}</span></div>
+          <div><span class="lbl">P/E</span><span>${fmtN(m.trailing_pe.value, 1)}</span></div>
+          <div><span class="lbl">5D</span><span class="${cls(m.five_day_performance.value)}">${fmtPct(m.five_day_performance.value)}</span></div>
+          <div><span class="lbl">RSI</span><span>${fmtN(m.rsi14.value, 1)}</span></div>
+          <div><span class="lbl">% from low</span><span>${fmtPct(m.percent_from_low.value)}</span></div>
+        </div>
+        <div class="rc-scores">
+          ${scoreBar100(m.scores.value_score, t, "value_score")}
+          ${scoreBar100(m.scores.momentum_score, t, "momentum_score")}
+        </div>
+      </a></div>`;
+  }).join("");
+  attachRowHandlers($("results-cards"), sorted);
 }
 
-// ---------- view toggle ----------
-let currentView = "table";
+// ---------- "Why this score?" modal ----------
+function showWhy(m, scoreKey) {
+  const s = m.scores[scoreKey];
+  if (!s) return;
+  const niceName = ({value_score:"Value", momentum_score:"Momentum", quality_score:"Quality", risk_score:"Risk (higher = riskier)", data_confidence_score:"Data Confidence"})[scoreKey] || scoreKey;
+  $("why-title").textContent = `${m.security.ticker} — ${niceName}: ${s.value} (${s.label})`;
+  const reasonsHtml = (s.reasons || []).length ? `<h3>Reasons</h3><ul>${s.reasons.map((r) => `<li>${r}</li>`).join("")}</ul>` : "";
+  const warningsHtml = (s.warnings || []).length ? `<h3>Warnings</h3><ul class="warn">${s.warnings.map((w) => `<li>${w}</li>`).join("")}</ul>` : "";
+  const sourcesHtml = (s.source_urls || []).length ? `<h3>Sources</h3><ul>${s.source_urls.map((u) => `<li><a href="${u}" target="_blank" rel="noopener">${u}</a></li>`).join("")}</ul>` : "";
+  $("why-body").innerHTML = reasonsHtml + warningsHtml + sourcesHtml || "<p class='muted'>No detail available.</p>";
+  $("why-modal").classList.remove("hidden");
+}
+$("why-close").onclick = () => $("why-modal").classList.add("hidden");
+
+// ---------- columns panel ----------
+function renderColsPanel() {
+  const groups = {};
+  COLUMNS.forEach((c) => {
+    if (c.alwaysOn) return;
+    if (!groups[c.group]) groups[c.group] = [];
+    groups[c.group].push(c);
+  });
+  $("cols-panel").innerHTML = Object.entries(groups).map(([g, cols]) => `
+    <div class="col-group">
+      <div class="col-group-name">${g}</div>
+      <div class="col-checks">
+        ${cols.map((c) => `<label><input type="checkbox" data-col="${c.key}" ${visibleCols[c.key] ? "checked" : ""}> ${c.label}</label>`).join("")}
+      </div>
+    </div>`).join("");
+  $("cols-panel").querySelectorAll("input[data-col]").forEach((cb) =>
+    cb.onchange = () => {
+      visibleCols[cb.dataset.col] = cb.checked;
+      persistColState();
+      if (lastResults) renderTable();
+    }
+  );
+}
+$("cols-btn").onclick = () => $("cols-panel").classList.toggle("hidden");
+
+// ---------- bulk + multi-select ----------
+const selected = new Set();
+function updateBulkBar() {
+  $("bulk-count").textContent = selected.size;
+  $("bulk-bar").classList.toggle("hidden", selected.size === 0);
+}
+$("bulk-watchlist").onclick = () => {
+  const list = prompt("Add to which watchlist?", Watchlists.activeName());
+  if (!list) return;
+  if (!Watchlists.names().includes(list)) {
+    if (!confirm(`Watchlist "${list}" doesn't exist. Create it?`)) return;
+    Watchlists.create(list);
+  }
+  let added = 0;
+  selected.forEach((t) => { if (Watchlists.add(t, list)) added++; });
+  alert(`Added ${added} ticker(s) to "${list}".`);
+};
+$("bulk-compare").onclick = () => {
+  if (selected.size < 2 || selected.size > 6) {
+    alert("Select 2–6 stocks to compare.");
+    return;
+  }
+  window.location.href = APP_BASE + "/compare?tickers=" + encodeURIComponent([...selected].join(","));
+};
+$("bulk-csv").onclick = () => exportSelection("csv");
+$("bulk-json").onclick = () => exportSelection("json");
+$("bulk-clear").onclick = () => {
+  selected.clear();
+  document.querySelectorAll(".row-select").forEach((cb) => (cb.checked = false));
+  document.querySelectorAll(".selected").forEach((el) => el.classList.remove("selected"));
+  updateBulkBar();
+};
+
+function exportSelection(fmt) {
+  if (!lastResults) return;
+  const subset = selected.size
+    ? lastResults.matches.filter((m) => selected.has(m.security.ticker))
+    : lastResults.matches;
+  if (!subset.length) return;
+  let payload, mime, ext;
+  if (fmt === "json") {
+    payload = JSON.stringify(subset, null, 2);
+    mime = "application/json";
+    ext = "json";
+  } else {
+    const headers = ["Ticker","Company","Exchange","Country","Sector","Industry","Currency","Price","MarketCapUSD","PE","PctFromLow","Perf5D","RSI14","ROC14","ROC21","ValueScore","MomentumScore","QualityScore","RiskScore","DataConfidence","PriceFreshness","PriceSource"];
+    const rows = subset.map((m) => [
+      m.security.ticker, (m.security.company_name || "").replaceAll('"','""'),
+      m.security.exchange || "", m.security.country || "", m.security.sector || "",
+      m.security.industry || "", m.security.currency || "",
+      m.price.value ?? "", m.market_cap_usd.value ?? "", m.trailing_pe.value ?? "",
+      m.percent_from_low.value ?? "", m.five_day_performance.value ?? "",
+      m.rsi14.value ?? "", m.roc14.value ?? "", m.roc21.value ?? "",
+      m.scores.value_score.value, m.scores.momentum_score.value,
+      m.scores.quality_score.value, m.scores.risk_score.value,
+      m.scores.data_confidence_score.value,
+      m.price.freshness, m.price.source_name,
+    ].map((v) => `"${String(v).replaceAll('"','""')}"`).join(","));
+    payload = headers.join(",") + "\n" + rows.join("\n");
+    mime = "text/csv";
+    ext = "csv";
+  }
+  const blob = new Blob([payload], { type: mime });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `screener-${Date.now()}.${ext}`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ---------- save preset ----------
+$("save-preset").onclick = () => {
+  const filters = customFilters();
+  if (!filters.length) {
+    alert("Add filters before saving.");
+    return;
+  }
+  const name = prompt("Name this preset:");
+  if (!name) return;
+  const presets = loadCustomPresets();
+  presets[name] = { name, filters };
+  saveCustomPresets(presets);
+  renderCustomPresets();
+  alert(`Saved "${name}".`);
+};
+
+// ---------- view toggles ----------
 document.querySelectorAll(".vt-btn").forEach((b) =>
   b.onclick = () => {
     document.querySelectorAll(".vt-btn").forEach((x) => x.classList.remove("active"));
     b.classList.add("active");
     currentView = b.dataset.view;
     if (lastResults) {
-      if (currentView === "table") renderTable(); else renderCards();
+      // Re-fetch when switching to cards (need sparkline data) and we don't have it.
+      if (currentView === "cards" && !lastResults.matches[0]?.recent_closes) {
+        runScreen({ filters: customFilters(), presetName: $("results-title").textContent });
+      } else {
+        currentView === "table" ? renderTable() : renderCards();
+      }
     }
+  }
+);
+
+$("compact-btn").onclick = () => {
+  compact = !compact;
+  document.body.classList.toggle("compact", compact);
+};
+
+// ---------- left-panel tabs ----------
+document.querySelectorAll(".fp-tab").forEach((t) =>
+  t.onclick = () => {
+    document.querySelectorAll(".fp-tab").forEach((x) => x.classList.remove("active"));
+    document.querySelectorAll(".fp-section").forEach((s) => s.classList.add("hidden"));
+    t.classList.add("active");
+    document.querySelector(`.fp-section[data-section="${t.dataset.tab}"]`).classList.remove("hidden");
   }
 );
 
 // ---------- bindings ----------
 $("run-screen").onclick = () => runScreen();
 $("clear-filters").onclick = () => {
-  ["f-country", "f-region", "f-sector", "f-mcap", "f-pe", "f-rsi-min",
-   "f-rsi-max", "f-p5", "f-pct-low"].forEach((id) => $(id).value = "");
-  $("f-above-200").checked = false;
+  document.querySelectorAll(".fp-section[data-section='filters'] input, .fp-section[data-section='filters'] select").forEach((el) => {
+    if (el.type === "checkbox") el.checked = false;
+    else if (el.tagName === "SELECT") {
+      Array.from(el.options).forEach((o) => o.selected = false);
+      el.value = "";
+    } else el.value = "";
+  });
 };
 
+renderColsPanel();
 loadPresets();
 </script>
 </body>
