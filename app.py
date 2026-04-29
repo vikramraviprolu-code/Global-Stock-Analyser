@@ -542,7 +542,7 @@ def api_server_info():
     import sys
     cache_stats = _universe_service._enriched_cache.stats()
     return jsonify({
-        "version": "0.13.0",
+        "version": "0.14.0",
         "python": sys.version.split()[0],
         "platform": platform.platform(),
         "url_prefix": URL_PREFIX or "/",
@@ -573,27 +573,38 @@ def api_sources_health():
     return jsonify({
         "providers": {
             "historical": {
-                "name": "Stooq CSV → yfinance fallback",
-                "type": "free",
+                "name": "Stooq CSV + yfinance (parallel + cross-validated)",
+                "type": "free, no API key",
                 "url": "https://stooq.com",
                 "fallback_url": "https://finance.yahoo.com",
+                "notes": "Both providers fetched concurrently; metrics earn verified_source_count=2 when last closes agree within 2%.",
             },
             "fundamentals": {
                 "name": "yfinance (.info)",
                 "type": "free / best-effort",
                 "url": "https://finance.yahoo.com",
+                "notes": "Market cap, P/E, P/B, dividend yield, sector, industry, currency.",
+            },
+            "events": {
+                "name": "yfinance (.calendar / .actions)",
+                "type": "free / best-effort",
+                "url": "https://finance.yahoo.com",
+                "notes": "Earnings, dividend, ex-dividend, split dates. Missing dates surface as freshness=unavailable; never fabricated.",
             },
             "fx": {
                 "name": "yfinance currency pairs",
                 "type": "free",
+                "notes": "USDxxx=X used to normalise market caps to USD. 6-hour cache.",
             },
             "symbol_resolver": {
                 "name": "Curated universe + yfinance Search",
                 "type": "free",
+                "notes": "Disambiguation modal when a query matches multiple listings.",
             },
             "mock": {
                 "name": "Synthetic fallback",
-                "type": "mock — only when live source fails",
+                "type": "mock — engages only when live sources fail",
+                "notes": "Every value badged freshness=mock and never silently mixed with live data.",
             },
         },
         "universe": _universe_service.stats(),

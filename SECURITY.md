@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Only the latest `main` branch receives security fixes. Pin a tagged release if you need stability. Latest: **v0.7.0**.
+Only the latest `main` branch receives security fixes. Pin a tagged release if you need stability. Latest: **v0.14.0**.
 
 ## Reporting a vulnerability
 
@@ -11,6 +11,13 @@ Only the latest `main` branch receives security fixes. Pin a tagged release if y
 1. Email a detailed report to the repository owner via GitHub (use the "Report a vulnerability" tab on the Security page of this repo).
 2. Include reproduction steps, affected version/commit, and suggested mitigation if known.
 3. Allow up to 7 days for an initial response.
+
+## Hardening applied in v0.13.0+
+
+| Threat | Mitigation |
+| --- | --- |
+| **CSRF on cache-clear** | `POST /api/settings/clear-cache` requires loopback peer AND `Origin`/`Referer` whose host is in `TRUSTED_HOSTS`. Returns 403 otherwise. |
+| **Single-source data risk** | `StooqYFinanceProvider.fetch()` runs both providers in parallel and cross-validates last close within 2%. When both succeed and agree, `verified_source_count = 2` and confidence is bumped to "high". A green ✓ surfaces in source badges across the UI. |
 
 ## Hardening applied in v0.7.0
 

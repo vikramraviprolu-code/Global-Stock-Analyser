@@ -18,21 +18,33 @@ python app.py            # http://127.0.0.1:5050
 
 | Want to... | Edit |
 | --- | --- |
-| Add a ticker | [data/universe_global.csv](data/universe_global.csv) |
+| Add a ticker | [data/universe_global.csv](data/universe_global.csv) — keep the `ticker, company, sector, industry, country, region, exchange, currency` shape |
 | Add a market / exchange suffix | [markets.py](markets.py) — `SUFFIX_MAP` + `REGIONAL_FILTERS` |
-| Add an indicator | [market_data.py](market_data.py) — `compute_indicators()` |
-| Tune scoring rules | [analyzer.py](analyzer.py) — `score_input_stock()` |
+| Add an indicator | [calc/indicators.py](calc/indicators.py) — pure-math, no DataFrame in the public API so it stays unit-testable |
+| Tune scoring rules | [calc/scoring.py](calc/scoring.py) — every score is 0–100 with explicit `+/-` point deltas surfaced in `reasons` |
+| Tune scenario recommendation | [calc/recommendation.py](calc/recommendation.py) — Base/Upside/Downside cases + Trigger/Invalidation |
+| Add a screener filter kind | [screener/engine.py](screener/engine.py) — extend `Filter.CHEAP_KINDS` or `_check_metric()`, then expose in `templates/screener.html` and `app.py` `VALID_FILTER_KINDS` |
+| Add a screener preset | [screener/presets.py](screener/presets.py) |
+| Add a free data source | New file in `providers/`; wire into `UniverseService.__init__` |
 | Improve resolver / search | [resolver.py](resolver.py) — `search()` |
-| Improve UI | [templates/](templates/) + [static/](static/) |
+| Add a page / API | New `templates/*.html` + new route in [app.py](app.py); add a nav link in [templates/_nav.html](templates/_nav.html) |
+| Improve UI | [templates/](templates/) + [static/](static/). New per-page CSS file pattern is `static/<page>.css` |
 
 ## Coding standards
 
 - **Python**: PEP 8, 4-space indent. Run `ruff check .` before pushing.
-- **No fabricated data**. If a value is missing, return `None` and let the UI render
+- **No fabricated data**. If a value is missing, return `None` (or
+  `SourcedValue.unavailable(...)` with a clear `warning`) and let the UI render
   "Data unavailable". Never guess or interpolate fundamentals.
+- **Always wrap fetched values in `SourcedValue`** so provenance (source name,
+  URL, retrieved-at, freshness, confidence, verified count, warning) flows
+  through to the UI badges and the Data Quality audit table.
 - **No hard-coded secrets / API keys**. The project must remain free-to-run.
-- **Backward compatibility**. The `/api/analyze` and `/api/search` response shapes are
-  consumed by the frontend — coordinate via PR if you change them.
+- **Backward compatibility**. The `/api/screener/run`, `/api/analyze/v2`,
+  `/api/metrics`, `/api/ohlcv`, and `/api/events` response shapes are
+  consumed by templates and tests — coordinate via PR if you change them.
+- **Tests required** for any new calc / scoring / filter / endpoint. The
+  suite (`pytest tests/ -q`) ships at 134 cases; aim to keep it green.
 
 ## Pull request checklist
 
