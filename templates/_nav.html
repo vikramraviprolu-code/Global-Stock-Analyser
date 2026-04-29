@@ -11,8 +11,8 @@
     <div class="v2-nav-links">
       <a href="{{ url_for('screener_page') }}" class="{{ 'active' if active_page == 'screener' else '' }}">Screener</a>
       <a href="{{ url_for('dashboard') }}" class="{{ 'active' if active_page == 'analysis' else '' }}">Stock Analysis</a>
-      <a href="#" class="disabled" title="Coming soon">Watchlists</a>
-      <a href="#" class="disabled" title="Coming soon">Compare</a>
+      <a href="{{ url_for('watchlists_page') }}" class="{{ 'active' if active_page == 'watchlists' else '' }}">Watchlists</a>
+      <a href="{{ url_for('compare_page') }}" class="{{ 'active' if active_page == 'compare' else '' }}">Compare</a>
       <a href="#" class="disabled" title="Coming soon">Data Quality</a>
       <a href="{{ url_for('sources_page') }}" class="{{ 'active' if active_page == 'sources' else '' }}">Sources</a>
       <a href="#" class="disabled" title="Coming soon">Settings</a>

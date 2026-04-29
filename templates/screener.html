@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='screener.css') }}">
+<script src="{{ url_for('static', filename='watchlist.js') }}"></script>
 </head>
 <body>
 {% set active_page = 'screener' %}
@@ -292,7 +293,13 @@ function renderResults(data) {
   else renderCards();
 }
 
+const starBtn = (ticker) => {
+  const starred = window.Watchlists && window.Watchlists.allTickers().has(ticker);
+  return `<button class="star-btn ${starred ? 'on' : ''}" data-ticker="${ticker}" title="${starred ? 'In a watchlist' : 'Add to watchlist'}">${starred ? '★' : '☆'}</button>`;
+};
+
 const COLUMNS = [
+  { key: "star",      label: "",        get: (m) => starBtn(m.security.ticker) },
   { key: "ticker",    label: "Ticker",  get: (m) => m.security.ticker, sortVal: (m) => m.security.ticker },
   { key: "company",   label: "Company", get: (m) => `${flag(m.security.country)} ${m.security.company_name || m.security.ticker}` },
   { key: "country",   label: "Country", get: (m) => m.security.country || "—", sortVal: (m) => m.security.country || "" },
@@ -341,9 +348,26 @@ function renderTable() {
     <tr data-ticker="${m.security.ticker}">
       ${COLUMNS.map((c) => `<td>${c.get(m)}</td>`).join("")}
     </tr>`).join("");
-  tbody.querySelectorAll("tr").forEach((tr) =>
-    tr.onclick = () => { window.location.href = APP_BASE + "/app?ticker=" + encodeURIComponent(tr.dataset.ticker); }
-  );
+  tbody.querySelectorAll("tr").forEach((tr) => {
+    tr.onclick = (e) => {
+      // ignore clicks on the star button — that toggles watchlist instead
+      if (e.target.classList.contains("star-btn")) return;
+      window.location.href = APP_BASE + "/app?ticker=" + encodeURIComponent(tr.dataset.ticker);
+    };
+  });
+  tbody.querySelectorAll(".star-btn").forEach((btn) => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const t = btn.dataset.ticker;
+      if (Watchlists.allTickers().has(t)) {
+        // Remove from every list
+        Watchlists.names().forEach((n) => Watchlists.remove(t, n));
+      } else {
+        Watchlists.add(t);
+      }
+      renderTable();  // re-render to update star state
+    };
+  });
 }
 
 function renderCards() {
@@ -354,7 +378,9 @@ function renderCards() {
     (a.scores.value_score.value + a.scores.momentum_score.value)
   );
   $("results-cards").innerHTML = sorted.map((m) => `
-    <a class="result-card" href="${APP_BASE + '/app?ticker=' + encodeURIComponent(m.security.ticker)}">
+    <div class="result-card-wrap">
+      ${starBtn(m.security.ticker)}
+      <a class="result-card" href="${APP_BASE + '/app?ticker=' + encodeURIComponent(m.security.ticker)}">
       <div class="rc-head">
         <div class="rc-ticker">${flag(m.security.country)} <strong>${m.security.ticker}</strong></div>
         ${sourceBadge(m.price)}
@@ -373,7 +399,21 @@ function renderCards() {
         ${scoreBar(m.scores.value_score, 4)}
         ${scoreBar(m.scores.momentum_score, 7)}
       </div>
-    </a>`).join("");
+    </a></div>`).join("");
+  // wire the star buttons inside cards too
+  $("results-cards").querySelectorAll(".star-btn").forEach((btn) => {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const t = btn.dataset.ticker;
+      if (Watchlists.allTickers().has(t)) {
+        Watchlists.names().forEach((n) => Watchlists.remove(t, n));
+      } else {
+        Watchlists.add(t);
+      }
+      renderCards();
+    };
+  });
 }
 
 // ---------- view toggle ----------

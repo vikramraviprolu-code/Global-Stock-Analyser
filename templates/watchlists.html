@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Watchlists — EquityScope</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='screener.css') }}">
+</head>
+<body>
+{% set active_page = 'watchlists' %}
+{% include '_nav.html' %}
+
+<div class="screener-shell">
+  <aside class="filter-panel">
+    <h2>Lists</h2>
+    <div id="list-tabs" class="list-tabs"></div>
+    <div class="list-actions">
+      <input id="new-list-name" placeholder="New list name…" maxlength="40">
+      <button id="create-list" class="btn-primary">+ Create</button>
+    </div>
+    <div class="list-actions">
+      <button id="delete-list" class="btn-ghost">Delete current</button>
+    </div>
+
+    <h2 style="margin-top: 24px;">Add Ticker</h2>
+    <div class="list-actions">
+      <input id="add-ticker" placeholder="e.g. AAPL or TCS.NS" maxlength="20">
+      <button id="add-btn" class="btn-primary">+ Add</button>
+    </div>
+    <p class="muted" style="font-size: 11px; margin-top: 6px;">
+      Tip: from the Screener, click the ⭐ on any row to add it here.
+    </p>
+
+    <h2 style="margin-top: 24px;">Actions</h2>
+    <button id="refresh-all" class="btn-primary">↻ Refresh metrics</button>
+    <button id="compare-selected" class="btn-ghost">Compare selected</button>
+  </aside>
+
+  <section class="results-panel">
+    <header class="results-header">
+      <div>
+        <h1 id="active-list-title">—</h1>
+        <p id="active-list-meta" class="muted"></p>
+      </div>
+      <div class="view-toggle">
+        <button class="vt-btn active" data-sort="ticker">A–Z</button>
+        <button class="vt-btn" data-sort="value_score">Value</button>
+        <button class="vt-btn" data-sort="momentum_score">Momentum</button>
+        <button class="vt-btn" data-sort="risk_score">Risk</button>
+        <button class="vt-btn" data-sort="data_confidence_score">Data</button>
+        <button class="vt-btn" data-sort="five_day_performance">5D</button>
+        <button class="vt-btn" data-sort="market_cap_usd">Mcap</button>
+        <button class="vt-btn" data-sort="trailing_pe">P/E</button>
+      </div>
+    </header>
+
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <div style="margin-top: 12px;">Fetching metrics…</div>
+    </div>
+
+    <div id="error-box" class="error hidden"></div>
+    <div id="empty-box" class="muted hidden" style="padding: 32px; text-align: center;">
+      No tickers in this list yet. Add some via the form on the left, or
+      ⭐ rows in the <a href="{{ url_for('screener_page') }}">Screener</a>.
+    </div>
+
+    <div id="cards" class="results-cards"></div>
+
+    <p class="disclaimer">
+      Watchlists are stored locally in this browser only — no login, no sync.
+      Free-source data may be delayed; values badged
+      <span class="src-badge mock">MOCK</span> are synthetic fallback.
+    </p>
+  </section>
+</div>
+
+<script src="{{ url_for('static', filename='watchlist.js') }}"></script>
+<script>
+const APP_BASE = {{ request.script_root|tojson }};
+const $ = (id) => document.getElementById(id);
+
+const fmtN = (n, dec = 2) => (n == null ? "—" : Number(n).toFixed(dec));
+const fmtPct = (n) => (n == null ? "—" : (n >= 0 ? "+" : "") + Number(n).toFixed(2) + "%");
+const fmtMcap = (n, sym = "$") => {
+  if (n == null) return "—";
+  if (n >= 1e12) return sym + (n / 1e12).toFixed(2) + "T";
+  if (n >= 1e9)  return sym + (n / 1e9).toFixed(2) + "B";
+  if (n >= 1e6)  return sym + (n / 1e6).toFixed(1) + "M";
+  return sym + Number(n).toFixed(0);
+};
+const cls = (n) => (n == null ? "muted" : n > 0 ? "green" : n < 0 ? "red" : "muted");
+const flag = (c) => ({"USA":"🇺🇸","India":"🇮🇳","UK":"🇬🇧","Germany":"🇩🇪","France":"🇫🇷","Netherlands":"🇳🇱","Switzerland":"🇨🇭","Italy":"🇮🇹","Spain":"🇪🇸","Sweden":"🇸🇪","Finland":"🇫🇮","Denmark":"🇩🇰","Norway":"🇳🇴","Japan":"🇯🇵","Hong Kong":"🇭🇰","South Korea":"🇰🇷","Taiwan":"🇹🇼","Singapore":"🇸🇬","Australia":"🇦🇺","China":"🇨🇳","Canada":"🇨🇦"}[c] || "🌐");
+
+const sourceBadge = (sv) => {
+  if (!sv) return '<span class="src-badge unavailable">—</span>';
+  const f = sv.freshness || "unavailable";
+  const cssCls = "src-badge " + f.replace(/[^a-z]/g, "-");
+  const tip = `${sv.source_name || "?"} • ${sv.confidence || "?"} confidence`;
+  const label = ({"real-time":"live","delayed":"delayed","previous-close":"prev","historical-only":"historical","cached":"cached","unavailable":"—","mock":"MOCK"})[f] || f;
+  return `<span class="${cssCls}" title="${tip}">${label}</span>`;
+};
+
+const scoreBar = (s, max) => {
+  if (!s) return "—";
+  const pct = Math.max(0, Math.min(100, (s.value / max) * 100));
+  const cssCls = "score-bar " + (s.label || "Mixed").toLowerCase();
+  return `<div class="${cssCls}" title="${(s.reasons || []).join('; ')}">
+    <div class="score-fill" style="width:${pct}%"></div>
+    <span class="score-text">${s.value.toFixed(1)} · ${s.label}</span>
+  </div>`;
+};
+
+// ---------- state ----------
+let cache = {}; // ticker -> metrics (live)
+let currentSort = "ticker";
+const selected = new Set();
+
+// ---------- list tabs ----------
+function renderTabs() {
+  const names = Watchlists.names();
+  const active = Watchlists.activeName();
+  $("list-tabs").innerHTML = names.map((n) => `
+    <button class="list-tab ${n === active ? 'active' : ''}" data-name="${n}">
+      ${n}
+      <span class="list-count">${Watchlists.list(n).length}</span>
+    </button>`).join("");
+  $("list-tabs").querySelectorAll(".list-tab").forEach((b) =>
+    b.onclick = () => {
+      Watchlists.setActive(b.dataset.name);
+      selected.clear();
+      renderTabs();
+      load();
+    }
+  );
+  $("active-list-title").textContent = active;
+}
+
+// ---------- load + render ----------
+async function load() {
+  const list = Watchlists.list(Watchlists.activeName());
+  $("error-box").classList.add("hidden");
+  $("empty-box").classList.add("hidden");
+  $("cards").innerHTML = "";
+  $("active-list-meta").textContent = `${list.length} ticker(s)`;
+
+  if (!list.length) {
+    $("empty-box").classList.remove("hidden");
+    return;
+  }
+
+  $("loading").classList.remove("hidden");
+  try {
+    const res = await fetch(APP_BASE + "/api/metrics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tickers: list }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      $("error-box").textContent = "❌ " + (data.error || "Fetch failed.");
+      $("error-box").classList.remove("hidden");
+      return;
+    }
+    cache = {};
+    data.metrics.forEach((m) => (cache[m.security.ticker] = m));
+    renderCards();
+  } catch (e) {
+    $("error-box").textContent = "❌ Network error: " + e.message;
+    $("error-box").classList.remove("hidden");
+  } finally {
+    $("loading").classList.add("hidden");
+  }
+}
+
+function sortKeys(metrics) {
+  const arr = [...metrics];
+  const dir = currentSort === "ticker" ? 1 : -1; // most metrics: high-first
+  arr.sort((a, b) => {
+    let av, bv;
+    if (currentSort === "ticker") { av = a.security.ticker; bv = b.security.ticker; }
+    else if (currentSort.endsWith("_score")) {
+      av = a.scores[currentSort]?.value;
+      bv = b.scores[currentSort]?.value;
+    } else {
+      av = a[currentSort]?.value;
+      bv = b[currentSort]?.value;
+    }
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    if (av < bv) return -1 * dir;
+    if (av > bv) return 1 * dir;
+    return 0;
+  });
+  return arr;
+}
+
+function renderCards() {
+  const list = Watchlists.list(Watchlists.activeName());
+  const metrics = list.map((t) => cache[t]).filter(Boolean);
+  const sorted = sortKeys(metrics);
+
+  $("cards").innerHTML = sorted.map((m) => {
+    const t = m.security.ticker;
+    const isSel = selected.has(t);
+    return `
+      <div class="result-card watchlist-card ${isSel ? 'selected' : ''}" data-ticker="${t}">
+        <div class="rc-head">
+          <label class="wl-check">
+            <input type="checkbox" ${isSel ? 'checked' : ''}> <span>${flag(m.security.country)} <strong>${t}</strong></span>
+          </label>
+          <div class="wl-actions">
+            ${sourceBadge(m.price)}
+            <button class="wl-remove" title="Remove">✕</button>
+          </div>
+        </div>
+        <a class="rc-name-link" href="${APP_BASE + '/app?ticker=' + encodeURIComponent(t)}">${m.security.company_name || t}</a>
+        <div class="rc-meta">${m.security.exchange || '—'} · ${m.security.sector || '—'}</div>
+        <div class="rc-grid">
+          <div><span class="lbl">Price</span><span>${m.security.currency || ""} ${fmtN(m.price.value)}</span></div>
+          <div><span class="lbl">Mcap</span><span>${fmtMcap(m.market_cap_usd.value)}</span></div>
+          <div><span class="lbl">P/E</span><span>${fmtN(m.trailing_pe.value, 1)}</span></div>
+          <div><span class="lbl">5D</span><span class="${cls(m.five_day_performance.value)}">${fmtPct(m.five_day_performance.value)}</span></div>
+          <div><span class="lbl">RSI</span><span>${fmtN(m.rsi14.value, 1)}</span></div>
+          <div><span class="lbl">% from low</span><span>${fmtPct(m.percent_from_low.value)}</span></div>
+        </div>
+        <div class="rc-scores">
+          ${scoreBar(m.scores.value_score, 4)}
+          ${scoreBar(m.scores.momentum_score, 7)}
+          ${scoreBar(m.scores.risk_score, 5)}
+        </div>
+      </div>`;
+  }).join("");
+
+  // bindings
+  $("cards").querySelectorAll(".watchlist-card").forEach((card) => {
+    const t = card.dataset.ticker;
+    card.querySelector(".wl-check input").onchange = (e) => {
+      if (e.target.checked) selected.add(t);
+      else selected.delete(t);
+      card.classList.toggle("selected", e.target.checked);
+    };
+    card.querySelector(".wl-remove").onclick = (e) => {
+      e.stopPropagation();
+      Watchlists.remove(t);
+      selected.delete(t);
+      renderTabs();
+      load();
+    };
+  });
+}
+
+// ---------- bindings ----------
+$("create-list").onclick = () => {
+  const name = $("new-list-name").value;
+  if (Watchlists.create(name)) {
+    $("new-list-name").value = "";
+    selected.clear();
+    renderTabs();
+    load();
+  }
+};
+$("delete-list").onclick = () => {
+  const name = Watchlists.activeName();
+  if (confirm(`Delete watchlist "${name}"? Tickers will be lost.`)) {
+    if (Watchlists.drop(name)) {
+      renderTabs();
+      load();
+    } else {
+      alert("Cannot delete the last remaining watchlist.");
+    }
+  }
+};
+$("add-btn").onclick = () => {
+  const t = $("add-ticker").value.trim().toUpperCase();
+  if (t && Watchlists.add(t)) {
+    $("add-ticker").value = "";
+    renderTabs();
+    load();
+  }
+};
+$("add-ticker").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") $("add-btn").click();
+});
+$("refresh-all").onclick = () => load();
+$("compare-selected").onclick = () => {
+  const tickers = [...selected];
+  if (!tickers.length) {
+    alert("Select at least 2 stocks to compare.");
+    return;
+  }
+  if (tickers.length > 6) {
+    alert("Compare supports up to 6 stocks. Deselect some.");
+    return;
+  }
+  window.location.href = APP_BASE + "/compare?tickers=" + encodeURIComponent(tickers.join(","));
+};
+document.querySelectorAll(".vt-btn").forEach((b) =>
+  b.onclick = () => {
+    document.querySelectorAll(".vt-btn").forEach((x) => x.classList.remove("active"));
+    b.classList.add("active");
+    currentSort = b.dataset.sort;
+    renderCards();
+  }
+);
+
+renderTabs();
+load();
+</script>
+</body>
+</html>

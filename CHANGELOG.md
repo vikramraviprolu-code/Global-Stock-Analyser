@@ -4,6 +4,67 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.9.0] - 2026-04-28
+
+### Added — Watchlists + Compare (Build Steps 3 + 4)
+
+**Watchlists** (`/watchlists`)
+- localStorage-backed (no login per spec). Schema:
+  `{version, watchlists: {name → ticker[]}, active}`.
+- Default lists seeded: "My Watchlist", "Value Candidates",
+  "Momentum Candidates".
+- Create / rename / delete custom lists; protected against deleting
+  the last remaining list.
+- Add ticker via input box, remove via ✕ on each card.
+- Refresh-all button → `POST /api/metrics`.
+- Sort by ticker / value / momentum / risk / data confidence / 5D /
+  market cap / P/E.
+- Multi-select checkboxes → "Compare selected" button → routes to
+  `/compare?tickers=…`.
+- Stored in `localStorage["equityscope.watchlists"]`. Browser-only,
+  no sync.
+
+**Compare** (`/compare`)
+- Side-by-side comparison for 2–6 stocks.
+- Hydrates from `?tickers=AAPL,MSFT,…` query string.
+- Metric matrix covers price, market cap (USD), P/E, forward P/E,
+  P/B, dividend yield, 5D performance, RSI, ROC 14/21, MAs (20/50/200),
+  % from 52W low, average volume, plus all five score bars.
+- Per-ticker SVG sparkline (90-day, no external lib, colour-coded
+  green/red by net change).
+- "Relative highlights" section auto-derives: cheapest by P/E,
+  strongest momentum, highest data confidence, riskiest stock.
+
+**Screener integration**
+- ⭐ button on every screener row + card. Click toggles ticker in/out
+  of every watchlist. State syncs immediately across the page.
+
+**API**
+- `POST /api/metrics` — batch enrich up to 12 tickers. Returns
+  `StockMetrics + scores` for each. Validates ticker format, preserves
+  caller order. No CSRF check (read-only endpoint).
+- `GET /api/sparkline?ticker=…&days=N` — closes-only series capped
+  20–750 days. Used by the compare page.
+
+**Provider extension**
+- `UniverseService.enrich_ticker(ticker)` — accepts any resolvable
+  ticker (not just universe rows); synthesises a row from
+  suffix-based metadata when missing.
+- `UniverseService.fetch_history_for(ticker)` — exposes raw OHLC for
+  the sparkline endpoint.
+
+**Nav**
+- `_nav.html` — Watchlists + Compare links activated (were "Coming
+  soon" in v0.8.0). Active-link highlight per route.
+
+**Tests**
+- `tests/test_watchlists_api.py` — 10 cases. Patches
+  `UniverseService.enrich_ticker` + `fetch_history_for` to skip the
+  network so tests run offline. Covers route renders, batch
+  validation (empty / too many / invalid characters), order
+  preservation, scores attachment, sparkline clamp.
+- All **65 tests pass** (was 55 in v0.8.0).
+
 ## [0.8.0] - 2026-04-28
 
 ### Added — v2 Screener (first deliverable)

@@ -226,6 +226,16 @@ def sources_page():
     return render_template("sources.html")
 
 
+@app.route("/watchlists")
+def watchlists_page():
+    return render_template("watchlists.html")
+
+
+@app.route("/compare")
+def compare_page():
+    return render_template("compare.html")
+
+
 # ----- v2 API ----------------------------------------------------------------
 
 @app.route("/api/screener/presets")
@@ -287,6 +297,98 @@ def api_screener_run():
         "enriched_count": result.enriched_count,
         "failed_enrichment": result.failed_enrichment,
         "warnings": result.warnings,
+    }))
+
+
+TICKER_BATCH_RE = re.compile(r"^[A-Z0-9]{1,12}(?:-[A-Z0-9]{1,4})?(?:\.[A-Z]{1,4})?$")
+
+
+def _enrich_ticker_with_scores(ticker: str):
+    """Enrich + attach scores. Returns dict or None on failure."""
+    try:
+        m = _universe_service.enrich_ticker(ticker)
+        m_dict = m.to_dict()
+        scores = score_all({
+            "price": m.price, "market_cap_usd": m.market_cap_usd,
+            "trailing_pe": m.trailing_pe, "rsi14": m.rsi14, "roc14": m.roc14,
+            "roc21": m.roc21, "ma20": m.ma20, "ma50": m.ma50, "ma200": m.ma200,
+            "five_day_performance": m.five_day_performance,
+            "percent_from_low": m.percent_from_low,
+            "fifty_two_week_high": m.fifty_two_week_high,
+            "fifty_two_week_low": m.fifty_two_week_low,
+            "dividend_yield": m.dividend_yield,
+            "price_to_book": m.price_to_book,
+            "avg_daily_volume": m.avg_daily_volume,
+            "security": m.security.to_dict(),
+        })
+        m_dict["scores"] = scores.to_dict()
+        return m_dict
+    except Exception:
+        app.logger.exception("Enrich failed for %s", ticker)
+        return None
+
+
+@app.route("/api/metrics", methods=["POST"])
+def api_metrics():
+    """Batch-enrich a list of tickers for watchlists / compare. Up to 6 to
+    keep response time bounded."""
+    data = request.get_json(silent=True) or {}
+    tickers = data.get("tickers") or []
+    if not isinstance(tickers, list) or not tickers:
+        return jsonify({"error": "tickers (list) required."}), 400
+    if len(tickers) > 12:
+        return jsonify({"error": "Max 12 tickers per request."}), 400
+
+    cleaned = []
+    for t in tickers:
+        if not isinstance(t, str):
+            continue
+        t = t.upper().strip()
+        if TICKER_BATCH_RE.match(t):
+            cleaned.append(t)
+    if not cleaned:
+        return jsonify({"error": "No valid tickers."}), 400
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    out = []
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        futures = {ex.submit(_enrich_ticker_with_scores, t): t for t in cleaned}
+        for fut in as_completed(futures):
+            res = fut.result()
+            if res:
+                out.append(res)
+    # Preserve original order
+    by_ticker = {m["security"]["ticker"]: m for m in out}
+    ordered = [by_ticker[t] for t in cleaned if t in by_ticker]
+    return jsonify(_scrub_nan({"metrics": ordered}))
+
+
+@app.route("/api/sparkline")
+def api_sparkline():
+    """Lightweight closes-only series for the compare page mini charts."""
+    ticker = (request.args.get("ticker") or "").upper().strip()
+    if not ticker or not TICKER_BATCH_RE.match(ticker):
+        return jsonify({"error": "Invalid ticker."}), 400
+    try:
+        days = int(request.args.get("days", "60"))
+    except ValueError:
+        days = 60
+    days = max(20, min(days, 750))
+
+    df = _universe_service.fetch_history_for(ticker)
+    if df is None or df.empty:
+        return jsonify({"error": "No history available."}), 404
+    closes = [float(x) for x in df["Close"].tolist() if x == x][-days:]
+    dates = [str(d.date() if hasattr(d, "date") else d)[:10] for d in df["Date"].tolist()][-len(closes):]
+    return jsonify(_scrub_nan({
+        "ticker": ticker,
+        "days": len(closes),
+        "closes": closes,
+        "dates": dates,
+        "min": min(closes) if closes else None,
+        "max": max(closes) if closes else None,
+        "first": closes[0] if closes else None,
+        "last": closes[-1] if closes else None,
     }))
 
 

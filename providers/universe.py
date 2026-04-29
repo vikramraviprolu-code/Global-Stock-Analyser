@@ -68,6 +68,31 @@ class UniverseService:
 
     # ----- enrichment ---------------------------------------------------------
 
+    def enrich_ticker(self, ticker: str, allow_mock_fallback: bool = True) -> StockMetrics:
+        """Enrich a single ticker. If it's in the curated universe, use that
+        row's metadata; otherwise synthesize a row from suffix-based meta so
+        the watchlist / compare pages can take any resolvable ticker."""
+        ticker = ticker.upper().strip()
+        existing = next((r for r in self.rows() if r["ticker"].upper() == ticker), None)
+        if existing:
+            return self.enrich(existing, allow_mock_fallback=allow_mock_fallback)
+        meta = listing_meta(ticker)
+        synthetic = {
+            "ticker": ticker,
+            "company": ticker,
+            "sector": None,
+            "industry": None,
+            "country": meta.get("country"),
+            "region": meta.get("region"),
+            "exchange": meta.get("exchange"),
+            "currency": meta.get("currency"),
+        }
+        return self.enrich(synthetic, allow_mock_fallback=allow_mock_fallback)
+
+    def fetch_history_for(self, ticker: str):
+        """Expose raw OHLC for sparkline / chart endpoints."""
+        return self.historical.fetch(ticker)
+
     def enrich(self, row: dict, allow_mock_fallback: bool = True) -> StockMetrics:
         ticker = row["ticker"].upper()
         cached = self._enriched_cache.get(ticker)

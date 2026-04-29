@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Compare — EquityScope</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='screener.css') }}">
+</head>
+<body>
+{% set active_page = 'compare' %}
+{% include '_nav.html' %}
+
+<div class="screener-shell" style="grid-template-columns: 1fr;">
+  <section class="results-panel">
+    <header class="results-header">
+      <div>
+        <h1>Compare Stocks</h1>
+        <p class="muted">Side-by-side metrics, scores, sparklines for 2–6 tickers.</p>
+      </div>
+      <div class="compare-input">
+        <input id="compare-input" placeholder="AAPL, MSFT, NVDA, RELIANCE.NS" maxlength="120">
+        <button id="compare-go" class="btn-primary">Compare</button>
+      </div>
+    </header>
+
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <div style="margin-top: 12px;">Fetching metrics + sparklines…</div>
+    </div>
+
+    <div id="error-box" class="error hidden"></div>
+    <div id="empty-box" class="muted hidden" style="padding: 32px; text-align: center;">
+      Enter 2–6 tickers above (comma-separated), or jump from
+      <a href="{{ url_for('watchlists_page') }}">Watchlists → Compare selected</a>.
+    </div>
+
+    <div id="compare-grid"></div>
+
+    <p class="disclaimer">
+      Free-source market data may be delayed, incomplete, or unavailable.
+      Cross-currency comparisons use mid-day FX rates and may drift. Mock-badged values
+      <span class="src-badge mock">MOCK</span> are synthetic fallback only.
+    </p>
+  </section>
+</div>
+
+<script>
+const APP_BASE = {{ request.script_root|tojson }};
+const $ = (id) => document.getElementById(id);
+
+const fmtN = (n, dec = 2) => (n == null ? "—" : Number(n).toFixed(dec));
+const fmtPct = (n) => (n == null ? "—" : (n >= 0 ? "+" : "") + Number(n).toFixed(2) + "%");
+const fmtMcap = (n, sym = "$") => {
+  if (n == null) return "—";
+  if (n >= 1e12) return sym + (n / 1e12).toFixed(2) + "T";
+  if (n >= 1e9)  return sym + (n / 1e9).toFixed(2) + "B";
+  if (n >= 1e6)  return sym + (n / 1e6).toFixed(1) + "M";
+  return sym + Number(n).toFixed(0);
+};
+const cls = (n) => (n == null ? "muted" : n > 0 ? "green" : n < 0 ? "red" : "muted");
+const flag = (c) => ({"USA":"🇺🇸","India":"🇮🇳","UK":"🇬🇧","Germany":"🇩🇪","France":"🇫🇷","Netherlands":"🇳🇱","Switzerland":"🇨🇭","Italy":"🇮🇹","Spain":"🇪🇸","Sweden":"🇸🇪","Finland":"🇫🇮","Denmark":"🇩🇰","Norway":"🇳🇴","Japan":"🇯🇵","Hong Kong":"🇭🇰","South Korea":"🇰🇷","Taiwan":"🇹🇼","Singapore":"🇸🇬","Australia":"🇦🇺","China":"🇨🇳","Canada":"🇨🇦"}[c] || "🌐");
+
+const sourceBadge = (sv) => {
+  if (!sv) return '<span class="src-badge unavailable">—</span>';
+  const f = sv.freshness || "unavailable";
+  const cssCls = "src-badge " + f.replace(/[^a-z]/g, "-");
+  const tip = `${sv.source_name || "?"} • ${sv.confidence || "?"} confidence`;
+  const label = ({"real-time":"live","delayed":"delayed","previous-close":"prev","historical-only":"historical","cached":"cached","unavailable":"—","mock":"MOCK"})[f] || f;
+  return `<span class="${cssCls}" title="${tip}">${label}</span>`;
+};
+
+const scoreBar = (s, max) => {
+  if (!s) return "—";
+  const pct = Math.max(0, Math.min(100, (s.value / max) * 100));
+  const cssCls = "score-bar " + (s.label || "Mixed").toLowerCase();
+  return `<div class="${cssCls}" title="${(s.reasons || []).join('; ')}">
+    <div class="score-fill" style="width:${pct}%"></div>
+    <span class="score-text">${s.value.toFixed(1)} · ${s.label}</span>
+  </div>`;
+};
+
+// ---------- SVG sparkline (no external lib) ----------
+function sparkline(closes, w = 220, h = 50) {
+  if (!closes || closes.length < 2) return "<div class='spark-empty'>No history</div>";
+  const min = Math.min(...closes);
+  const max = Math.max(...closes);
+  const range = (max - min) || 1;
+  const stepX = w / (closes.length - 1);
+  const pts = closes.map((c, i) => `${(i * stepX).toFixed(2)},${(h - ((c - min) / range) * h).toFixed(2)}`).join(" ");
+  const last = closes[closes.length - 1];
+  const first = closes[0];
+  const colour = last >= first ? "#3fb950" : "#f85149";
+  // area under the curve
+  const area = `M0,${h} L${pts.replace(/ /g, " L")} L${w},${h} Z`;
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" preserveAspectRatio="none">
+    <path d="${area}" fill="${colour}" fill-opacity="0.12"/>
+    <polyline points="${pts}" fill="none" stroke="${colour}" stroke-width="1.5"/>
+  </svg>`;
+}
+
+// ---------- metrics rows in the side-by-side table ----------
+const ROWS = [
+  { label: "Country",       get: (m) => `${flag(m.security.country)} ${m.security.country || "—"}` },
+  { label: "Exchange",      get: (m) => m.security.exchange || "—" },
+  { label: "Sector",        get: (m) => m.security.sector || "—" },
+  { label: "Industry",      get: (m) => m.security.industry || "—" },
+  { label: "Currency",      get: (m) => m.security.currency || "—" },
+  { label: "Price",         get: (m) => `${m.security.currency || ""} ${fmtN(m.price.value)}`, src: "price" },
+  { label: "Market Cap (USD)", get: (m) => fmtMcap(m.market_cap_usd.value), src: "market_cap_usd" },
+  { label: "Trailing P/E",  get: (m) => fmtN(m.trailing_pe.value, 1), src: "trailing_pe" },
+  { label: "Forward P/E",   get: (m) => fmtN(m.forward_pe?.value, 1), src: "forward_pe" },
+  { label: "Price / Book",  get: (m) => fmtN(m.price_to_book?.value, 2), src: "price_to_book" },
+  { label: "Dividend Yield",get: (m) => fmtPct(m.dividend_yield?.value), src: "dividend_yield" },
+  { label: "5D Performance",get: (m) => `<span class="${cls(m.five_day_performance.value)}">${fmtPct(m.five_day_performance.value)}</span>` },
+  { label: "RSI 14",        get: (m) => fmtN(m.rsi14.value, 1) },
+  { label: "ROC 14D",       get: (m) => fmtPct(m.roc14.value) },
+  { label: "ROC 21D",       get: (m) => fmtPct(m.roc21.value) },
+  { label: "20D MA",        get: (m) => fmtN(m.ma20.value, 2) },
+  { label: "50D MA",        get: (m) => fmtN(m.ma50.value, 2) },
+  { label: "200D MA",       get: (m) => fmtN(m.ma200.value, 2) },
+  { label: "% from 52W low",get: (m) => fmtPct(m.percent_from_low.value) },
+  { label: "Avg Volume",    get: (m) => {
+      const v = m.avg_daily_volume.value;
+      if (v == null) return "—";
+      if (v >= 1e6) return (v / 1e6).toFixed(2) + "M";
+      if (v >= 1e3) return (v / 1e3).toFixed(0) + "K";
+      return Math.round(v);
+  }},
+  { label: "Value",         get: (m) => scoreBar(m.scores.value_score, 4) },
+  { label: "Momentum",      get: (m) => scoreBar(m.scores.momentum_score, 7) },
+  { label: "Quality",       get: (m) => scoreBar(m.scores.quality_score, 4) },
+  { label: "Risk (lower=safer)", get: (m) => scoreBar(m.scores.risk_score, 5) },
+  { label: "Data Confidence",    get: (m) => scoreBar(m.scores.data_confidence_score, 5) },
+];
+
+// ---------- relative highlights ----------
+function bestWorst(metrics, getNum, lowerIsBetter = false) {
+  const vals = metrics.map(getNum);
+  const valid = vals.filter((v) => v != null && !Number.isNaN(v));
+  if (valid.length < 2) return { best: null, worst: null };
+  const best = lowerIsBetter ? Math.min(...valid) : Math.max(...valid);
+  const worst = lowerIsBetter ? Math.max(...valid) : Math.min(...valid);
+  return { best, worst };
+}
+
+function relativeHighlights(metrics) {
+  // Cheaper than peers? lowest P/E. Stronger momentum? highest momentum_score.
+  // Higher data confidence? highest data_confidence. Higher risk? lowest risk_score.
+  const pes = metrics.map((m) => m.trailing_pe?.value).filter((v) => v != null && v > 0);
+  const cheapest = pes.length >= 2 ? metrics.find((m) => m.trailing_pe.value === Math.min(...pes)) : null;
+  const mom = bestWorst(metrics, (m) => m.scores.momentum_score?.value);
+  const strongest = mom.best != null ? metrics.find((m) => m.scores.momentum_score.value === mom.best) : null;
+  const dc = bestWorst(metrics, (m) => m.scores.data_confidence_score?.value);
+  const mostConf = dc.best != null ? metrics.find((m) => m.scores.data_confidence_score.value === dc.best) : null;
+  const rs = bestWorst(metrics, (m) => m.scores.risk_score?.value, true);  // lower=more risk
+  const riskiest = rs.worst != null ? metrics.find((m) => m.scores.risk_score.value === rs.worst) : null;
+  return [
+    cheapest ? `Cheaper than peers: <strong>${cheapest.security.ticker}</strong> (${fmtN(cheapest.trailing_pe.value, 1)}x P/E)` : null,
+    strongest ? `Strongest momentum: <strong>${strongest.security.ticker}</strong> (score ${strongest.scores.momentum_score.value.toFixed(1)})` : null,
+    mostConf ? `Highest data confidence: <strong>${mostConf.security.ticker}</strong> (${mostConf.scores.data_confidence_score.value.toFixed(1)}/5)` : null,
+    riskiest ? `Highest risk: <strong>${riskiest.security.ticker}</strong> (risk score ${riskiest.scores.risk_score.value.toFixed(1)}/5 — lower = riskier)` : null,
+  ].filter(Boolean);
+}
+
+// ---------- run ----------
+async function runCompare() {
+  const raw = $("compare-input").value.trim();
+  if (!raw) {
+    $("error-box").textContent = "Enter at least 2 tickers.";
+    $("error-box").classList.remove("hidden");
+    return;
+  }
+  const tickers = raw.split(/[,\s]+/).map((t) => t.trim().toUpperCase()).filter(Boolean);
+  if (tickers.length < 2) {
+    $("error-box").textContent = "At least 2 tickers required.";
+    $("error-box").classList.remove("hidden");
+    return;
+  }
+  if (tickers.length > 6) {
+    $("error-box").textContent = "Max 6 tickers.";
+    $("error-box").classList.remove("hidden");
+    return;
+  }
+
+  $("error-box").classList.add("hidden");
+  $("empty-box").classList.add("hidden");
+  $("compare-grid").innerHTML = "";
+  $("loading").classList.remove("hidden");
+
+  // Update URL
+  const params = new URLSearchParams(window.location.search);
+  params.set("tickers", tickers.join(","));
+  history.replaceState(null, "", APP_BASE + "/compare?" + params.toString());
+
+  try {
+    const [metricsRes, ...sparkRes] = await Promise.all([
+      fetch(APP_BASE + "/api/metrics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tickers }),
+      }).then((r) => r.json()),
+      ...tickers.map((t) =>
+        fetch(APP_BASE + "/api/sparkline?ticker=" + encodeURIComponent(t) + "&days=90")
+          .then((r) => r.ok ? r.json() : { ticker: t, closes: [] })
+          .catch(() => ({ ticker: t, closes: [] }))
+      ),
+    ]);
+
+    if (metricsRes.error) {
+      $("error-box").textContent = "❌ " + metricsRes.error;
+      $("error-box").classList.remove("hidden");
+      return;
+    }
+
+    const metrics = metricsRes.metrics || [];
+    if (!metrics.length) {
+      $("error-box").textContent = "No metrics returned.";
+      $("error-box").classList.remove("hidden");
+      return;
+    }
+
+    const sparkByTicker = {};
+    sparkRes.forEach((s) => { if (s && s.ticker) sparkByTicker[s.ticker] = s.closes || []; });
+
+    renderCompare(metrics, sparkByTicker);
+  } catch (e) {
+    $("error-box").textContent = "❌ Network error: " + e.message;
+    $("error-box").classList.remove("hidden");
+  } finally {
+    $("loading").classList.add("hidden");
+  }
+}
+
+function renderCompare(metrics, sparks) {
+  const highlights = relativeHighlights(metrics);
+  const grid = $("compare-grid");
+
+  const headerCells = metrics.map((m) => `
+    <th class="cmp-head">
+      <a href="${APP_BASE + '/app?ticker=' + encodeURIComponent(m.security.ticker)}" class="cmp-ticker">
+        ${flag(m.security.country)} <strong>${m.security.ticker}</strong>
+      </a>
+      <div class="cmp-name">${m.security.company_name || m.security.ticker}</div>
+      <div class="cmp-spark">${sparkline(sparks[m.security.ticker])}</div>
+    </th>`).join("");
+
+  const rows = ROWS.map((r) => `
+    <tr>
+      <th class="cmp-row-label">${r.label}</th>
+      ${metrics.map((m) => `<td>${r.get(m)}${r.src ? " " + sourceBadge(m[r.src]) : ""}</td>`).join("")}
+    </tr>`).join("");
+
+  grid.innerHTML = `
+    ${highlights.length ? `<div class="cmp-highlights">${highlights.map((h) => `<div>★ ${h}</div>`).join("")}</div>` : ""}
+    <div class="cmp-table-wrap">
+      <table class="cmp-table">
+        <thead><tr><th class="cmp-row-label">Metric</th>${headerCells}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+// ---------- bindings ----------
+$("compare-go").onclick = runCompare;
+$("compare-input").addEventListener("keydown", (e) => { if (e.key === "Enter") runCompare(); });
+
+// Hydrate from query string
+const urlTickers = new URLSearchParams(window.location.search).get("tickers");
+if (urlTickers) {
+  $("compare-input").value = urlTickers;
+  setTimeout(runCompare, 50);
+} else {
+  $("empty-box").classList.remove("hidden");
+}
+</script>
+</body>
+</html>
