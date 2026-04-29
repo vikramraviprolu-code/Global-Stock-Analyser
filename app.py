@@ -22,10 +22,11 @@ from werkzeug.exceptions import NotFound
 from analyzer import run_analysis
 from resolver import search, needs_disambiguation
 from markets import listing_meta
-from providers import UniverseService
+from providers import UniverseService, EventsProvider
 from screener import Filter, ScreenerEngine, PRESETS, get_preset
 from screener.presets import list_presets
 from calc.scoring import score_all
+from calc.recommendation import build_scenario
 
 URL_PREFIX = os.getenv("URL_PREFIX", "").rstrip("/")  # e.g. "/Local"
 
@@ -272,6 +273,16 @@ def watchlists_page():
 @app.route("/compare")
 def compare_page():
     return render_template("compare.html")
+
+
+@app.route("/data-quality")
+def data_quality_page():
+    return render_template("data_quality.html")
+
+
+@app.route("/events")
+def events_page():
+    return render_template("events.html")
 
 
 # ----- v2 API ----------------------------------------------------------------
@@ -712,12 +723,186 @@ def api_analyze_v2():
     matrix = _peer_matrix(m_dict, peer_dicts)
     src_name, src_url = _universe_service.historical.source_for(ticker)
 
+    # Events (best effort)
+    events_dict = {}
+    try:
+        ev = _universe_service.events.fetch(ticker)
+        events_dict = {k: v.to_dict() for k, v in ev.items()}
+    except Exception:
+        events_dict = {}
+
+    # Inject events into the input metrics dict so the Stock Analysis Events
+    # tab + Sources audit can render them.
+    for ev_key in ("earnings_date", "dividend_date", "ex_dividend_date", "split_date"):
+        if ev_key in events_dict:
+            m_dict[ev_key] = events_dict[ev_key]
+
+    # Scenario recommendation (uses metrics + scores + events)
+    metrics_for_scenario = {
+        "price": m.price, "ma20": m.ma20, "ma50": m.ma50, "ma200": m.ma200,
+        "fifty_two_week_high": m.fifty_two_week_high,
+        "fifty_two_week_low": m.fifty_two_week_low,
+        "rsi14": m.rsi14, "roc14": m.roc14, "roc21": m.roc21,
+        "trailing_pe": m.trailing_pe, "percent_from_low": m.percent_from_low,
+        "security": m.security.to_dict(),
+    }
+    try:
+        scenario = build_scenario(metrics_for_scenario, scores, events_dict)
+    except Exception:
+        app.logger.exception("Scenario build failed for %s", ticker)
+        scenario = None
+
     return jsonify(_scrub_nan({
         "input": m_dict,
         "peers": peer_dicts,
         "peer_matrix": matrix,
         "history_source": {"name": src_name, "url": src_url},
+        "events": events_dict,
+        "scenario": scenario,
     }))
+
+
+@app.route("/api/events")
+def api_events():
+    """Events for a single ticker."""
+    ticker = (request.args.get("ticker") or "").upper().strip()
+    if not ticker or not TICKER_BATCH_RE.match(ticker):
+        return jsonify({"error": "Invalid ticker."}), 400
+    try:
+        ev = _universe_service.events.fetch(ticker)
+    except Exception:
+        app.logger.exception("Events fetch failed for %s", ticker)
+        return jsonify({"error": "Events fetch failed."}), 500
+    return jsonify(_scrub_nan({
+        "ticker": ticker,
+        "events": {k: v.to_dict() for k, v in ev.items()},
+    }))
+
+
+@app.route("/api/events/calendar", methods=["POST"])
+def api_events_calendar():
+    """Events for a list of tickers (e.g. from a watchlist or screener result)."""
+    data = request.get_json(silent=True) or {}
+    tickers = data.get("tickers") or []
+    if not isinstance(tickers, list) or not tickers:
+        return jsonify({"error": "tickers (list) required."}), 400
+    if len(tickers) > 30:
+        return jsonify({"error": "Max 30 tickers per request."}), 400
+    cleaned = []
+    for t in tickers:
+        if not isinstance(t, str):
+            continue
+        t = t.upper().strip()
+        if TICKER_BATCH_RE.match(t):
+            cleaned.append(t)
+    if not cleaned:
+        return jsonify({"error": "No valid tickers."}), 400
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    out = {}
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        futures = {ex.submit(_universe_service.events.fetch, t): t for t in cleaned}
+        for fut in as_completed(futures):
+            t = futures[fut]
+            try:
+                ev = fut.result()
+                out[t] = {k: v.to_dict() for k, v in ev.items()}
+            except Exception:
+                out[t] = {}
+    return jsonify(_scrub_nan({"events": out}))
+
+
+@app.route("/api/data-quality/audit")
+def api_data_quality_audit():
+    """Source-audit table over the curated universe (cached for 30 min).
+
+    Returns rows of {ticker, metric, value, source, url, retrieved_at,
+    freshness, confidence, warning} for every metric on every ticker we
+    have in our enrichment cache.
+    """
+    rows = []
+    counts = {"real-time": 0, "delayed": 0, "previous-close": 0,
+              "historical-only": 0, "cached": 0, "unavailable": 0, "mock": 0}
+    by_ticker_status = {}
+
+    METRIC_KEYS = (
+        "price", "market_cap_local", "market_cap_usd", "trailing_pe",
+        "forward_pe", "price_to_book", "dividend_yield", "avg_daily_volume",
+        "fifty_two_week_high", "fifty_two_week_low", "rsi14", "roc14", "roc21",
+        "ma20", "ma50", "ma200",
+    )
+
+    # Walk the enriched cache (only stocks the user has seen / screened recently)
+    for entry_ts, entry in list(_universe_service._enriched_cache._store.values()):
+        if entry is None:
+            continue
+        sec = entry.security
+        ticker = sec.ticker
+        for key in METRIC_KEYS:
+            sv = getattr(entry, key, None)
+            if sv is None:
+                continue
+            f = getattr(sv, "freshness", "unavailable")
+            counts[f] = counts.get(f, 0) + 1
+            rows.append({
+                "ticker": ticker,
+                "metric": key,
+                "value": sv.value,
+                "source": sv.source_name,
+                "url": sv.source_url,
+                "retrieved_at": sv.retrieved_at,
+                "freshness": f,
+                "confidence": sv.confidence,
+                "warning": sv.warning,
+            })
+            status = by_ticker_status.setdefault(ticker, {"available": 0, "missing": 0, "mock": 0})
+            if sv.value is None:
+                status["missing"] += 1
+            elif f == "mock":
+                status["mock"] += 1
+            else:
+                status["available"] += 1
+
+    cache_stats = _universe_service._enriched_cache.stats()
+    return jsonify(_scrub_nan({
+        "audit_rows": rows,
+        "row_count": len(rows),
+        "freshness_counts": counts,
+        "tickers_covered": list(by_ticker_status.keys()),
+        "ticker_count": len(by_ticker_status),
+        "ticker_status": by_ticker_status,
+        "cache_stats": cache_stats,
+        "next_refresh_seconds": cache_stats["ttl_seconds"],
+    }))
+
+
+@app.route("/api/data-quality/stats")
+def api_data_quality_stats():
+    """Lightweight summary used by the Data Quality dashboard hero."""
+    audit = api_data_quality_audit().get_json()
+    rows = audit["audit_rows"]
+    total = len(rows)
+    if total == 0:
+        return jsonify({
+            "total_metrics": 0,
+            "tickers_covered": 0,
+            "avg_confidence_pct": None,
+            "freshness_counts": audit["freshness_counts"],
+            "stale_pct": 0,
+            "mock_pct": 0,
+            "missing_pct": 0,
+        })
+    fc = audit["freshness_counts"]
+    return jsonify({
+        "total_metrics": total,
+        "tickers_covered": audit["ticker_count"],
+        "freshness_counts": fc,
+        "stale_pct": round(100 * fc.get("historical-only", 0) / total, 1),
+        "mock_pct": round(100 * fc.get("mock", 0) / total, 1),
+        "missing_pct": round(100 * fc.get("unavailable", 0) / total, 1),
+        "fresh_pct": round(100 * (fc.get("real-time", 0) + fc.get("delayed", 0) + fc.get("previous-close", 0) + fc.get("cached", 0)) / total, 1),
+        "next_refresh_seconds": audit["next_refresh_seconds"],
+    })
 
 
 @app.route("/api/analyze", methods=["POST"])

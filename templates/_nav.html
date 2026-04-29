@@ -13,7 +13,8 @@
       <a href="{{ url_for('dashboard') }}" class="{{ 'active' if active_page == 'analysis' else '' }}">Stock Analysis</a>
       <a href="{{ url_for('watchlists_page') }}" class="{{ 'active' if active_page == 'watchlists' else '' }}">Watchlists</a>
       <a href="{{ url_for('compare_page') }}" class="{{ 'active' if active_page == 'compare' else '' }}">Compare</a>
-      <a href="#" class="disabled" title="Coming soon">Data Quality</a>
+      <a href="{{ url_for('events_page') }}" class="{{ 'active' if active_page == 'events' else '' }}">Events</a>
+      <a href="{{ url_for('data_quality_page') }}" class="{{ 'active' if active_page == 'data-quality' else '' }}">Data Quality</a>
       <a href="{{ url_for('sources_page') }}" class="{{ 'active' if active_page == 'sources' else '' }}">Sources</a>
       <a href="#" class="disabled" title="Coming soon">Settings</a>
     </div>

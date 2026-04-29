@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Data Quality — EquityScope</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='screener.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='analysis.css') }}">
+</head>
+<body>
+{% set active_page = 'data-quality' %}
+{% include '_nav.html' %}
+
+<div class="screener-shell" style="grid-template-columns: 1fr;">
+  <section class="results-panel">
+    <header class="results-header">
+      <div>
+        <h1>Data Quality Command Center</h1>
+        <p class="muted" id="dq-summary">Loading…</p>
+      </div>
+      <div class="rh-toolbar">
+        <button class="btn-ghost" id="dq-refresh">↻ Refresh</button>
+        <button class="btn-ghost" id="dq-csv">↓ CSV</button>
+        <button class="btn-ghost" id="dq-json">↓ JSON</button>
+      </div>
+    </header>
+
+    <div id="dq-stats" class="dq-stats"></div>
+    <div id="dq-warnings" class="warnings hidden"></div>
+
+    <div class="card">
+      <h2>Source Audit Table</h2>
+      <p class="muted" style="font-size: 12px;">
+        One row per (ticker × metric). Cached values are auto-refreshed every 30 minutes.
+        Filter and sort to dig into stale, mock, or missing fields.
+      </p>
+      <div class="dq-controls">
+        <input id="dq-filter-ticker" placeholder="Ticker contains…" type="text">
+        <select id="dq-filter-freshness">
+          <option value="">All freshness</option>
+          <option value="real-time">real-time</option>
+          <option value="delayed">delayed</option>
+          <option value="previous-close">previous-close</option>
+          <option value="cached">cached</option>
+          <option value="historical-only">historical-only</option>
+          <option value="unavailable">unavailable</option>
+          <option value="mock">mock</option>
+        </select>
+        <select id="dq-filter-confidence">
+          <option value="">All confidence</option>
+          <option value="high">high</option>
+          <option value="medium">medium</option>
+          <option value="low">low</option>
+        </select>
+      </div>
+      <div style="overflow-x: auto;">
+        <table id="dq-table" class="results-table">
+          <thead><tr>
+            <th>Ticker</th><th>Metric</th><th>Value</th><th>Source</th><th>URL</th>
+            <th>Retrieved At</th><th>Freshness</th><th>Confidence</th><th>Warning</th>
+          </tr></thead>
+          <tbody id="dq-tbody"></tbody>
+        </table>
+      </div>
+      <div id="dq-empty" class="muted" style="padding: 32px; text-align: center;">
+        No data in the cache yet. Run a screen or open a stock analysis to populate.
+      </div>
+    </div>
+
+    <p class="disclaimer">
+      Free-source market data may be delayed, incomplete, or unavailable.
+      Mock-badged rows are synthetic fallback (only when both Stooq and yfinance fail).
+      Never silently mixed with live data.
+    </p>
+  </section>
+</div>
+
+<script>
+const APP_BASE = {{ request.script_root|tojson }};
+const $ = (id) => document.getElementById(id);
+let auditCache = null;
+
+async function loadAudit() {
+  $("dq-summary").textContent = "Loading…";
+  $("dq-tbody").innerHTML = "";
+  try {
+    const r = await fetch(APP_BASE + "/api/data-quality/audit");
+    const d = await r.json();
+    auditCache = d;
+    renderStats(d);
+    renderTable();
+  } catch (e) {
+    $("dq-summary").textContent = "❌ Failed to load: " + e.message;
+  }
+}
+
+function renderStats(d) {
+  const fc = d.freshness_counts || {};
+  const total = d.row_count;
+  $("dq-summary").innerHTML = `<strong>${total}</strong> source records across <strong>${d.ticker_count}</strong> tickers · cache TTL <strong>${d.cache_stats.ttl_seconds}s</strong>`;
+
+  if (total === 0) {
+    $("dq-stats").innerHTML = "";
+    $("dq-empty").classList.remove("hidden");
+    return;
+  }
+  $("dq-empty").classList.add("hidden");
+
+  const cellPct = (key, label, cssCls) => {
+    const n = fc[key] || 0;
+    const pct = total ? (100 * n / total).toFixed(1) : 0;
+    return `<div class="dq-stat ${cssCls}">
+      <div class="dq-stat-num">${n}</div>
+      <div class="dq-stat-label">${label} <span class="muted">(${pct}%)</span></div>
+    </div>`;
+  };
+  $("dq-stats").innerHTML =
+    cellPct("real-time", "Real-time", "good") +
+    cellPct("delayed", "Delayed", "good") +
+    cellPct("previous-close", "Prev close", "good") +
+    cellPct("cached", "Cached", "good") +
+    cellPct("historical-only", "Historical only", "warn") +
+    cellPct("mock", "Mock", "danger") +
+    cellPct("unavailable", "Unavailable", "danger");
+}
+
+function renderTable() {
+  if (!auditCache) return;
+  const tFilter = $("dq-filter-ticker").value.toUpperCase();
+  const fFilter = $("dq-filter-freshness").value;
+  const cFilter = $("dq-filter-confidence").value;
+
+  const rows = auditCache.audit_rows.filter((r) => {
+    if (tFilter && !r.ticker.includes(tFilter)) return false;
+    if (fFilter && r.freshness !== fFilter) return false;
+    if (cFilter && r.confidence !== cFilter) return false;
+    return true;
+  });
+
+  $("dq-tbody").innerHTML = rows.map((r) => `
+    <tr>
+      <td><strong>${r.ticker}</strong></td>
+      <td>${r.metric}</td>
+      <td>${r.value == null ? '<span class="muted">unavailable</span>' : (typeof r.value === "number" ? Number(r.value).toLocaleString() : r.value)}</td>
+      <td>${r.source || "—"}</td>
+      <td>${r.url ? `<a href="${r.url}" target="_blank" rel="noopener">link</a>` : "—"}</td>
+      <td class="muted">${(r.retrieved_at || "").substring(0, 19)}</td>
+      <td><span class="src-badge ${(r.freshness || 'unavailable').replace(/[^a-z]/g, '-')}">${r.freshness || "—"}</span></td>
+      <td>${r.confidence || "—"}</td>
+      <td>${r.warning ? `<span class="yellow">${r.warning}</span>` : ""}</td>
+    </tr>`).join("");
+}
+
+["dq-filter-ticker", "dq-filter-freshness", "dq-filter-confidence"].forEach((id) =>
+  $(id).addEventListener("input", renderTable)
+);
+
+$("dq-refresh").onclick = loadAudit;
+
+function exportData(fmt) {
+  if (!auditCache) return;
+  let payload, mime, ext;
+  if (fmt === "json") {
+    payload = JSON.stringify(auditCache, null, 2);
+    mime = "application/json";
+    ext = "json";
+  } else {
+    const headers = ["Ticker","Metric","Value","Source","URL","RetrievedAt","Freshness","Confidence","Warning"];
+    const rows = auditCache.audit_rows.map((r) =>
+      [r.ticker, r.metric, r.value, r.source, r.url, r.retrieved_at, r.freshness, r.confidence, r.warning]
+        .map((v) => `"${String(v ?? "").replaceAll('"','""')}"`).join(",")
+    );
+    payload = headers.join(",") + "\n" + rows.join("\n");
+    mime = "text/csv";
+    ext = "csv";
+  }
+  const blob = new Blob([payload], { type: mime });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `data-quality-audit-${Date.now()}.${ext}`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+$("dq-csv").onclick = () => exportData("csv");
+$("dq-json").onclick = () => exportData("json");
+
+loadAudit();
+</script>
+</body>
+</html>

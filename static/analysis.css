@@ -156,7 +156,47 @@
 
 /* ---------- inherited (results-table styles for peer/peer roster) ---------- */
 
+/* ---------- scenario cards ---------- */
+.scenario-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px; margin-bottom: 12px;
+}
+.scenario-card { padding: 14px; }
+.scenario-card.base { border-left: 3px solid var(--accent); }
+.scenario-card.up { border-left: 3px solid var(--green); }
+.scenario-card.down { border-left: 3px solid var(--red); }
+.scenario-card ul { padding-left: 18px; margin: 6px 0; font-size: 13px; line-height: 1.6; }
+
+/* ---------- data quality ---------- */
+.dq-stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px; margin: 10px 0 16px;
+}
+.dq-stat {
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 10px 12px; text-align: center;
+}
+.dq-stat-num { font-size: 22px; font-weight: 700; }
+.dq-stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.4px; }
+.dq-stat.good { border-color: var(--green); }
+.dq-stat.good .dq-stat-num { color: var(--green); }
+.dq-stat.warn { border-color: var(--yellow); }
+.dq-stat.warn .dq-stat-num { color: var(--yellow); }
+.dq-stat.danger { border-color: var(--red); }
+.dq-stat.danger .dq-stat-num { color: var(--red); }
+
+.dq-controls {
+  display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap;
+}
+.dq-controls input, .dq-controls select {
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 6px 10px; font-family: inherit; font-size: 13px;
+}
+.dq-controls input { flex: 1; min-width: 200px; }
+
 /* responsive */
 @media (max-width: 900px) {
   .chart-canvas { height: 400px; }
+  .scenario-grid { grid-template-columns: 1fr; }
 }

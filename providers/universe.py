@@ -26,6 +26,7 @@ from providers.historical import (
 )
 from providers.fundamentals import YFinanceFundamentals
 from providers.mock import MockProvider
+from providers.events import EventsProvider
 
 UNIVERSE_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -39,12 +40,14 @@ class UniverseService:
         historical: Optional[StooqYFinanceProvider] = None,
         fundamentals: Optional[YFinanceFundamentals] = None,
         mock: Optional[MockProvider] = None,
+        events: Optional[EventsProvider] = None,
         ttl_seconds: int = 1800,
     ):
         cache = TTLCache(default_ttl=ttl_seconds)
         self.historical = historical or StooqYFinanceProvider(cache=cache)
         self.fundamentals = fundamentals or YFinanceFundamentals(cache=cache)
         self.mock = mock or MockProvider()
+        self.events = events or EventsProvider()
         self._enriched_cache = TTLCache(default_ttl=ttl_seconds)
         self._rows: Optional[List[dict]] = None
         self._row_lock = threading.Lock()

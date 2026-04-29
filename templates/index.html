@@ -469,58 +469,83 @@ function renderPeers() {
 
 // ---------- Events ----------
 function renderEvents(i) {
-  const earn = i.earnings_date;
-  const div = i.dividend_date;
-  const split = i.split_date;
-  const haveAny = (earn?.value || div?.value || split?.value);
-  if (!haveAny) {
+  const events = analysisData.events || {};
+  const rows = [];
+  const labels = {
+    earnings_date: "Next Earnings",
+    dividend_date: "Next Dividend (pay)",
+    ex_dividend_date: "Next Ex-Dividend",
+    split_date: "Most Recent Split",
+  };
+  for (const key of ["earnings_date","ex_dividend_date","dividend_date","split_date"]) {
+    const sv = events[key];
+    if (sv && sv.value) {
+      rows.push(`<tr><th>${labels[key]}</th><td><strong>${sv.value}</strong></td><td>${sv.source_url ? `<a href="${sv.source_url}" target="_blank" rel="noopener">${sv.source_name}</a>` : (sv.source_name || "—")}</td><td>${sourceBadge(sv)}</td></tr>`);
+    }
+  }
+  if (!rows.length) {
     $("events").innerHTML = `
       <div class="card">
         <h2>Events &amp; Catalysts</h2>
         <p class="muted">Data unavailable. No reliable free/public source found for upcoming earnings, dividend, or split dates for this ticker.</p>
-        <p class="muted" style="font-size: 12px;">A dedicated EventsProvider with free-source coverage is planned for Build Step 6.</p>
+        <p class="muted" style="font-size: 12px;">yfinance calendar coverage is limited — verify against the company's IR page for trade-relevant timing.</p>
       </div>`;
     return;
   }
   $("events").innerHTML = `
     <div class="card">
       <h2>Events &amp; Catalysts</h2>
-      <table class="kv-table">
-        ${earn?.value ? `<tr><th>Next Earnings</th><td>${earn.value}</td><td>${sourceBadge(earn)}</td></tr>` : ""}
-        ${div?.value ? `<tr><th>Next Dividend</th><td>${div.value}</td><td>${sourceBadge(div)}</td></tr>` : ""}
-        ${split?.value ? `<tr><th>Next Split</th><td>${split.value}</td><td>${sourceBadge(split)}</td></tr>` : ""}
-      </table>
+      <p class="muted">From yfinance — free public source. Verify against IR pages for trade-relevant timing.</p>
+      <table class="kv-table">${rows.join("")}</table>
     </div>`;
 }
 
-// ---------- Recommendation ----------
+// ---------- Recommendation (scenario) ----------
 function renderRecommendation(i) {
-  const v = i.scores.value_score.value;
-  const m = i.scores.momentum_score.value;
-  const r = i.scores.risk_score.value;
-  const dc = i.scores.data_confidence_score.value;
-  let rating, ratingCls, why;
-  if (dc < 40) { rating = "Watch"; ratingCls = "watch"; why = "Insufficient data confidence for a confident call."; }
-  else if (m >= 65 && v >= 40 && r <= 50) { rating = "Buy"; ratingCls = "buy"; why = "Strong momentum + reasonable value + acceptable risk."; }
-  else if (m <= 25 || r >= 70) { rating = "Avoid"; ratingCls = "avoid"; why = "Weak momentum or elevated risk."; }
-  else { rating = "Watch"; ratingCls = "watch"; why = "Mixed signals — wait for confirmation."; }
+  const sc = analysisData.scenario;
+  if (!sc) {
+    $("recommendation").innerHTML = `<div class="card"><h2>Recommendation</h2><p class="muted">Scenario unavailable.</p></div>`;
+    return;
+  }
+  const ratingCls = sc.final_rating.toLowerCase();
+  const list = (arr) => `<ul>${arr.map((x) => `<li>${x}</li>`).join("")}</ul>`;
   $("recommendation").innerHTML = `
     <div class="card">
-      <h2>Recommendation</h2>
       <div class="rec-banner ${ratingCls}">
-        <div class="rec-rating">${rating}</div>
-        <div class="rec-why">${why}</div>
+        <div class="rec-rating">${sc.final_rating}</div>
+        <div class="rec-why">
+          <strong>${sc.confidence_reason}</strong>
+          <div class="muted" style="font-size: 12px; margin-top: 4px;">Time horizon: ${sc.time_horizon}</div>
+        </div>
       </div>
-      <p class="muted" style="font-size: 12px; margin-top: 8px;">
-        Build Step 7 (Scenario-Based Recommendation) will add Base / Upside / Downside cases,
-        Technical Trigger, Invalidation Level, and Confidence Reason to this section.
-      </p>
       <div class="score-grid">
         <div class="score-cell"><div class="lbl">Value</div>${scoreBar100(i.scores.value_score)}</div>
         <div class="score-cell"><div class="lbl">Momentum</div>${scoreBar100(i.scores.momentum_score)}</div>
+        <div class="score-cell"><div class="lbl">Quality</div>${scoreBar100(i.scores.quality_score)}</div>
         <div class="score-cell"><div class="lbl">Risk</div>${scoreBar100(i.scores.risk_score, "risk_score")}</div>
         <div class="score-cell"><div class="lbl">Data Confidence</div>${scoreBar100(i.scores.data_confidence_score)}</div>
       </div>
+    </div>
+    <div class="scenario-grid">
+      <div class="card scenario-card base">
+        <h2>📊 Base Case</h2>${list(sc.base_case)}
+      </div>
+      <div class="card scenario-card up">
+        <h2 class="green">📈 Upside Case</h2>${list(sc.upside_case)}
+      </div>
+      <div class="card scenario-card down">
+        <h2 class="red">📉 Downside Case</h2>${list(sc.downside_case)}
+      </div>
+    </div>
+    <div class="card">
+      <h2>Technical Trigger</h2>
+      <p>${sc.technical_trigger}</p>
+      <h3>Invalidation Level</h3>
+      <p>${sc.invalidation_level}</p>
+    </div>
+    <div class="card">
+      <h2>Catalysts</h2>
+      ${list(sc.catalysts)}
     </div>`;
 }
 

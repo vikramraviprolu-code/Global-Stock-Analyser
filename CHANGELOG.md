@@ -4,6 +4,78 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.12.0] - 2026-04-29
+
+### Added — Build Steps 5 + 6 + 7 (Data Quality + Events + Scenario Recommendation)
+
+**Build Step 5: Data Quality Command Center** (`/data-quality`)
+- Source-audit table over the live enrichment cache: ticker × metric ×
+  source × URL × retrieved-at × freshness × confidence × warning.
+- Hero stats: counts by freshness category (real-time / delayed / prev /
+  cached / historical / mock / unavailable).
+- Filter controls (ticker contains, freshness, confidence).
+- CSV + JSON export of the full audit.
+- Refresh button forces a re-pull.
+- New endpoints:
+  - `GET /api/data-quality/audit` — complete audit rows + counts
+  - `GET /api/data-quality/stats` — summary % (fresh / stale / mock / missing)
+
+**Build Step 6: Events / Catalyst Calendar** (`/events`)
+- New `EventsProvider` (`providers/events.py`) using yfinance `.calendar`,
+  `.info`, and `.actions`. Returns SourcedValue for earnings_date,
+  dividend_date, ex_dividend_date, split_date. Failed lookups surface as
+  `freshness="unavailable"` with explicit warning — never fabricated.
+- Wired into `UniverseService.events`; populated lazily on demand.
+- New endpoints:
+  - `GET /api/events?ticker=`
+  - `POST /api/events/calendar` — batch (≤30 tickers) for watchlist /
+    custom views.
+- New page `/events` — pulls events for the user's local watchlist by
+  default, falls back to a custom-tickers input box. Shows date / event /
+  ticker / source / freshness / confidence rows sorted by upcoming date.
+- Stock Analysis "Events" tab now renders real events with source URLs.
+
+**Build Step 7: Scenario-Based Recommendation**
+- New `calc/recommendation.build_scenario()` returns the full PRD shape:
+  - `base_case` — narrative anchored on price vs MAs + P/E zone
+  - `upside_case` — natural targets (200D reclaim, 52W high re-test, ROC)
+  - `downside_case` — failure points (lose 50D, break 200D, fail 52W low,
+    overbought RSI)
+  - `technical_trigger` — bullish / bearish / continuation / mixed
+  - `invalidation_level` — closer of 200D MA / 52W low
+  - `confidence_reason` — why this rating, score-driven
+  - `final_rating` — Buy / Watch / Avoid
+  - `time_horizon` — rating-aware (1–3 mo Buy, 2–6 wk Watch, 4–8 wk Avoid)
+  - `catalysts` — pulled from EventsProvider when available, plus generic
+    sector + peer-earnings entries.
+- `/api/analyze/v2` now embeds `scenario` (and `events`) in the response.
+- Stock Analysis "Recommendation" tab redesigned: rating banner +
+  confidence reason + time horizon + 3-card scenario grid (Base / Upside
+  / Downside) + Technical Trigger + Invalidation Level + Catalysts.
+
+**Nav** — `_nav.html` activates Events + Data Quality links (were "Coming
+soon" in v0.11.0).
+
+### Tests
+- `tests/test_recommendation.py` — 10 cases. Required-keys shape, rating
+  enum, strong-setup → Buy, overbought → Avoid, low-data → Watch, trigger
+  uses MAs, invalidation uses MA / 52W low, catalysts pull from events,
+  empty-events fallback, non-empty cases.
+- `tests/test_events_and_dq.py` — 11 cases. EventsProvider returns
+  expected keys on yfinance failure; /api/events + /api/events/calendar
+  validation + payload shape; /api/data-quality/audit + /stats payload
+  shape; /events + /data-quality routes render.
+- All **109 tests pass** (was 87 in v0.11.0).
+
+### Smoke test (live data)
+- AAPL: events resolve dividend 2026-02-12, ex-div 2026-02-09, split
+  2020-08-31; earnings unavailable from yfinance — surfaces as
+  `freshness="unavailable"` with warning, never fabricated.
+- Scenario rating "Watch" with continuation trigger anchored on $260.56
+  (50D MA) / $254.21 (200D MA), invalidation at 200D MA.
+- Data Quality command center: 208 metrics across 13 cached tickers;
+  97.6% fresh, 0% stale, 0% mock, 2.4% unavailable.
+
 ## [0.11.0] - 2026-04-29
 
 ### Added — Build Step 2 (Stock Analysis 8-tab redesign + interactive charts + peer matrix v2)

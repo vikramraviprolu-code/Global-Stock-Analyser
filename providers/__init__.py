@@ -5,10 +5,11 @@ from providers.cache import TTLCache
 from providers.symbol import SymbolResolver, DefaultSymbolResolver
 from providers.mock import MockProvider
 from providers.universe import UniverseService
+from providers.events import EventsProvider
 
 __all__ = [
     "HistoricalPriceProvider", "StooqYFinanceProvider",
     "FundamentalsProvider", "YFinanceFundamentals",
     "TTLCache", "SymbolResolver", "DefaultSymbolResolver",
-    "MockProvider", "UniverseService",
+    "MockProvider", "UniverseService", "EventsProvider",
 ]

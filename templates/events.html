@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Events &amp; Catalysts — EquityScope</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='screener.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='analysis.css') }}">
+<script src="{{ url_for('static', filename='watchlist.js') }}"></script>
+</head>
+<body>
+{% set active_page = 'events' %}
+{% include '_nav.html' %}
+
+<div class="screener-shell" style="grid-template-columns: 1fr;">
+  <section class="results-panel">
+    <header class="results-header">
+      <div>
+        <h1>Events &amp; Catalyst Calendar</h1>
+        <p class="muted">Earnings, dividend, ex-dividend, and split dates from free public sources only.</p>
+      </div>
+      <div class="rh-toolbar">
+        <button class="vt-btn active" data-source="watchlist">My Watchlist</button>
+        <button class="vt-btn" data-source="custom">Custom tickers</button>
+      </div>
+    </header>
+
+    <div id="custom-input" class="hidden" style="margin-bottom: 12px;">
+      <div class="compare-input">
+        <input id="custom-tickers" placeholder="AAPL, MSFT, RELIANCE.NS" maxlength="200">
+        <button id="custom-go" class="btn-primary">Load events</button>
+      </div>
+    </div>
+
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <div style="margin-top: 12px;">Fetching events…</div>
+    </div>
+
+    <div id="error-box" class="error hidden"></div>
+    <div id="empty-box" class="muted hidden" style="padding: 32px; text-align: center;">
+      No upcoming events found from free public sources for the requested tickers.
+    </div>
+
+    <div class="card">
+      <h2>Upcoming Events</h2>
+      <table id="events-table" class="results-table">
+        <thead><tr>
+          <th>Date</th><th>Event</th><th>Ticker</th><th>Company</th>
+          <th>Source</th><th>Freshness</th><th>Confidence</th>
+        </tr></thead>
+        <tbody id="events-tbody"></tbody>
+      </table>
+    </div>
+
+    <p class="disclaimer">
+      Event dates are best-effort from yfinance and may be outdated, missing, or imprecise.
+      For trading decisions, verify each date against the company's investor relations page.
+      Where no reliable free source is available, the row simply does not appear.
+    </p>
+  </section>
+</div>
+
+<script>
+const APP_BASE = {{ request.script_root|tojson }};
+const $ = (id) => document.getElementById(id);
+
+const fmtDate = (d) => d ? d.substring(0, 10) : "—";
+const flag = (c) => ({"USA":"🇺🇸","India":"🇮🇳","UK":"🇬🇧","Germany":"🇩🇪","France":"🇫🇷","Netherlands":"🇳🇱","Switzerland":"🇨🇭","Italy":"🇮🇹","Spain":"🇪🇸","Sweden":"🇸🇪","Finland":"🇫🇮","Denmark":"🇩🇰","Norway":"🇳🇴","Japan":"🇯🇵","Hong Kong":"🇭🇰","South Korea":"🇰🇷","Taiwan":"🇹🇼","Singapore":"🇸🇬","Australia":"🇦🇺","China":"🇨🇳","Canada":"🇨🇦"}[c] || "🌐");
+const sourceBadge = (sv) => {
+  if (!sv) return '<span class="src-badge unavailable">—</span>';
+  const f = sv.freshness || "unavailable";
+  const cssCls = "src-badge " + f.replace(/[^a-z]/g, "-");
+  const label = ({"real-time":"live","delayed":"delayed","previous-close":"prev","historical-only":"historical","cached":"cached","unavailable":"—","mock":"MOCK"})[f] || f;
+  return `<span class="${cssCls}">${label}</span>`;
+};
+
+let mode = "watchlist";
+document.querySelectorAll(".vt-btn").forEach((b) =>
+  b.onclick = () => {
+    document.querySelectorAll(".vt-btn").forEach((x) => x.classList.remove("active"));
+    b.classList.add("active");
+    mode = b.dataset.source;
+    $("custom-input").classList.toggle("hidden", mode !== "custom");
+    if (mode === "watchlist") loadWatchlist();
+  }
+);
+
+async function loadEvents(tickers) {
+  $("error-box").classList.add("hidden");
+  $("empty-box").classList.add("hidden");
+  $("events-tbody").innerHTML = "";
+  if (!tickers.length) {
+    $("empty-box").classList.remove("hidden");
+    return;
+  }
+  $("loading").classList.remove("hidden");
+  try {
+    const res = await fetch(APP_BASE + "/api/events/calendar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tickers }),
+    });
+    const data = await res.json();
+    if (data.error) {
+      $("error-box").textContent = "❌ " + data.error;
+      $("error-box").classList.remove("hidden");
+      return;
+    }
+    renderEvents(data.events, tickers);
+  } catch (e) {
+    $("error-box").textContent = "❌ " + e.message;
+    $("error-box").classList.remove("hidden");
+  } finally {
+    $("loading").classList.add("hidden");
+  }
+}
+
+function renderEvents(byTicker, tickers) {
+  const rows = [];
+  Object.entries(byTicker).forEach(([t, ev]) => {
+    Object.entries(ev).forEach(([key, sv]) => {
+      if (!sv || sv.value == null) return;
+      const eventLabel = ({earnings_date:"Earnings",dividend_date:"Dividend pay",
+                           ex_dividend_date:"Ex-dividend",split_date:"Split"}[key]) || key;
+      rows.push({ ticker: t, eventLabel, key, sv });
+    });
+  });
+  rows.sort((a, b) => (a.sv.value || "").localeCompare(b.sv.value || ""));
+
+  if (!rows.length) {
+    $("empty-box").innerHTML = `No upcoming events found from free public sources for ${tickers.length} ticker(s). yfinance calendar coverage is limited — for trade-relevant timing, verify against company IR pages.`;
+    $("empty-box").classList.remove("hidden");
+    return;
+  }
+
+  $("events-tbody").innerHTML = rows.map((r) => `
+    <tr>
+      <td><strong>${fmtDate(r.sv.value)}</strong></td>
+      <td>${r.eventLabel}</td>
+      <td><a href="${APP_BASE}/app?ticker=${encodeURIComponent(r.ticker)}"><strong>${r.ticker}</strong></a></td>
+      <td>—</td>
+      <td>${r.sv.source_url ? `<a href="${r.sv.source_url}" target="_blank" rel="noopener">${r.sv.source_name || "link"}</a>` : (r.sv.source_name || "—")}</td>
+      <td>${sourceBadge(r.sv)}</td>
+      <td>${r.sv.confidence || "—"}</td>
+    </tr>`).join("");
+}
+
+function loadWatchlist() {
+  const all = new Set();
+  if (window.Watchlists) {
+    Watchlists.allTickers().forEach((t) => all.add(t));
+  }
+  const tickers = [...all].slice(0, 30);
+  if (!tickers.length) {
+    $("empty-box").innerHTML = `Your watchlist is empty. Add some via the <a href="${APP_BASE}/screener">Screener</a> ⭐ buttons or <a href="${APP_BASE}/watchlists">Watchlists</a> page, then return here.`;
+    $("empty-box").classList.remove("hidden");
+    return;
+  }
+  loadEvents(tickers);
+}
+
+$("custom-go").onclick = () => {
+  const raw = $("custom-tickers").value.trim();
+  if (!raw) return;
+  const tickers = raw.split(/[,\s]+/).map((t) => t.trim().toUpperCase()).filter(Boolean).slice(0, 30);
+  loadEvents(tickers);
+};
+$("custom-tickers").addEventListener("keydown", (e) => { if (e.key === "Enter") $("custom-go").click(); });
+
+loadWatchlist();
+</script>
+</body>
+</html>
