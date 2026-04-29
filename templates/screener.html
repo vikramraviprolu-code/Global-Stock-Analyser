@@ -297,9 +297,12 @@ const sourceBadge = (sv) => {
   if (!sv) return '<span class="src-badge unavailable">—</span>';
   const f = sv.freshness || "unavailable";
   const cssCls = "src-badge " + f.replace(/[^a-z]/g, "-");
-  const tip = `${sv.source_name || "?"} • ${sv.confidence || "?"} confidence`;
+  const verified = sv.verified_source_count || 0;
+  const verifiedTxt = verified >= 2 ? ` • ✓ verified by ${verified} sources` : "";
+  const tip = `${sv.source_name || "?"} • ${sv.confidence || "?"} confidence${verifiedTxt}`;
   const label = ({"real-time":"live","delayed":"delayed","previous-close":"prev","historical-only":"historical","cached":"cached","unavailable":"—","mock":"MOCK"})[f] || f;
-  return `<span class="${cssCls}" title="${tip}">${label}</span>`;
+  const verifiedDot = verified >= 2 ? ' <span class="verified-dot" title="Verified by 2+ sources">✓</span>' : '';
+  return `<span class="${cssCls}" title="${tip}">${label}${verifiedDot}</span>`;
 };
 
 const scoreBar100 = (s, ticker, scoreKey) => {

@@ -136,12 +136,15 @@ class UniverseService:
 
         hist_source, hist_url = self.historical.source_for(ticker)
         retrieved_at = ""  # default to now via SourcedValue.__post_init__
+        verified = self.historical.verified_count_for(ticker)
+        if verified >= 2:
+            confidence = "high"
 
         def sv_price(value):
             return SourcedValue(
                 value=value, source_name=hist_source, source_url=hist_url,
                 retrieved_at=retrieved_at, freshness=freshness, confidence=confidence,
-                verified_source_count=1,
+                verified_source_count=max(verified, 1),
             )
 
         def sv_fund(value, source_url=None):

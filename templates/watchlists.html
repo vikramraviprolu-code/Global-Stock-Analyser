@@ -97,20 +97,37 @@ const sourceBadge = (sv) => {
   if (!sv) return '<span class="src-badge unavailable">—</span>';
   const f = sv.freshness || "unavailable";
   const cssCls = "src-badge " + f.replace(/[^a-z]/g, "-");
-  const tip = `${sv.source_name || "?"} • ${sv.confidence || "?"} confidence`;
+  const verified = sv.verified_source_count || 0;
+  const verifiedTxt = verified >= 2 ? ` • ✓ verified by ${verified} sources` : "";
+  const tip = `${sv.source_name || "?"} • ${sv.confidence || "?"} confidence${verifiedTxt}`;
   const label = ({"real-time":"live","delayed":"delayed","previous-close":"prev","historical-only":"historical","cached":"cached","unavailable":"—","mock":"MOCK"})[f] || f;
-  return `<span class="${cssCls}" title="${tip}">${label}</span>`;
+  const verifiedDot = verified >= 2 ? ' <span class="verified-dot" title="Verified by 2+ sources">✓</span>' : '';
+  return `<span class="${cssCls}" title="${tip}">${label}${verifiedDot}</span>`;
 };
 
 const scoreBar = (s, max) => {
   if (!s) return "—";
-  const pct = Math.max(0, Math.min(100, (s.value / max) * 100));
+  // Scores are now 0–100; normalise consistently regardless of `max` param
+  const pct = Math.max(0, Math.min(100, s.value));
   const cssCls = "score-bar " + (s.label || "Mixed").toLowerCase();
   return `<div class="${cssCls}" title="${(s.reasons || []).join('; ')}">
     <div class="score-fill" style="width:${pct}%"></div>
-    <span class="score-text">${s.value.toFixed(1)} · ${s.label}</span>
+    <span class="score-text">${s.value.toFixed(0)} · ${s.label}</span>
   </div>`;
 };
+
+function sparkline(closes, w = 240, h = 36) {
+  if (!closes || closes.length < 2) return '<span class="muted spark-empty">—</span>';
+  const min = Math.min(...closes), max = Math.max(...closes);
+  const r = (max - min) || 1;
+  const sx = w / (closes.length - 1);
+  const pts = closes.map((c, i) => `${(i * sx).toFixed(1)},${(h - ((c - min) / r) * h).toFixed(1)}`).join(" ");
+  const colour = closes[closes.length - 1] >= closes[0] ? "#3fb950" : "#f85149";
+  const area = `M0,${h} L${pts.replace(/ /g, " L")} L${w},${h} Z`;
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" preserveAspectRatio="none">
+    <path d="${area}" fill="${colour}" fill-opacity="0.12"/>
+    <polyline points="${pts}" fill="none" stroke="${colour}" stroke-width="1.5"/></svg>`;
+}
 
 // ---------- state ----------
 let cache = {}; // ticker -> metrics (live)
@@ -152,10 +169,15 @@ async function load() {
 
   $("loading").classList.remove("hidden");
   try {
+    let sparkDays = 60;
+    try {
+      const prefs = JSON.parse(localStorage.getItem("equityscope.prefs") || "{}");
+      if (prefs.sparkDays) sparkDays = parseInt(prefs.sparkDays);
+    } catch (e) {}
     const res = await fetch(APP_BASE + "/api/metrics", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tickers: list }),
+      body: JSON.stringify({ tickers: list, include_sparkline: true, sparkline_days: sparkDays }),
     });
     const data = await res.json();
     if (!res.ok || data.error) {
@@ -217,6 +239,7 @@ function renderCards() {
         </div>
         <a class="rc-name-link" href="${APP_BASE + '/app?ticker=' + encodeURIComponent(t)}">${m.security.company_name || t}</a>
         <div class="rc-meta">${m.security.exchange || '—'} · ${m.security.sector || '—'}</div>
+        <div class="rc-spark">${sparkline(m.recent_closes || [])}</div>
         <div class="rc-grid">
           <div><span class="lbl">Price</span><span>${m.security.currency || ""} ${fmtN(m.price.value)}</span></div>
           <div><span class="lbl">Mcap</span><span>${fmtMcap(m.market_cap_usd.value)}</span></div>

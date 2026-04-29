@@ -15,12 +15,20 @@ class HistoricalPriceProvider(Protocol):
 
 
 class StooqYFinanceProvider:
-    """Tries Stooq CSV first (free, no key), falls back to yfinance."""
+    """Fetches OHLCV from Stooq + yfinance in parallel and cross-validates.
+
+    When both providers return data and their last closes agree within
+    ~2%, we bump `verified_source_count` to 2 and confidence to "high".
+    Otherwise we fall back to whichever source returned data with
+    `verified_source_count` = 1.
+    """
     STOOQ_URL = "https://stooq.com/q/d/l/?s={sym}.us&i=d"
+    VERIFICATION_TOLERANCE = 0.02  # 2%
 
     def __init__(self, cache: Optional[TTLCache] = None):
         self._cache = cache or TTLCache(default_ttl=1800)
-        self._last_source: dict[str, tuple[str, Optional[str]]] = {}
+        self._last_source: dict = {}
+        self._verified: dict = {}
 
     def fetch(self, ticker: str) -> Optional[pd.DataFrame]:
         sym = ticker.lower().strip()
@@ -29,15 +37,47 @@ class StooqYFinanceProvider:
         if cached is not None:
             return cached
 
-        df = self._fetch_stooq(sym)
-        if df is None or df.empty:
-            df = self._fetch_yfinance(ticker)
-        if df is not None and not df.empty:
-            self._cache.set(cache_key, df)
-        return df
+        from concurrent.futures import ThreadPoolExecutor
+        # Parallel fetch — same wall-clock cost as the slower of the two providers.
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            stooq_fut = ex.submit(self._fetch_stooq, sym)
+            yf_fut = ex.submit(self._fetch_yfinance, ticker)
+            stooq_df = stooq_fut.result()
+            yf_df = yf_fut.result()
 
-    def source_for(self, ticker: str) -> tuple[str, Optional[str]]:
+        chosen = None
+        verified = 0
+        if yf_df is not None and not yf_df.empty:
+            chosen = yf_df
+            verified = 1
+        elif stooq_df is not None and not stooq_df.empty:
+            chosen = stooq_df
+            verified = 1
+            # Override last_source if only Stooq succeeded (yfinance handler
+            # already wrote its source on success; ensure Stooq is recorded
+            # when it's the only one).
+            self._last_source[sym] = ("Stooq", self.STOOQ_URL.format(sym=sym))
+
+        if (stooq_df is not None and yf_df is not None
+                and not stooq_df.empty and not yf_df.empty):
+            try:
+                s_last = float(stooq_df["Close"].dropna().iloc[-1])
+                y_last = float(yf_df["Close"].dropna().iloc[-1])
+                if y_last > 0 and abs(s_last - y_last) / y_last < self.VERIFICATION_TOLERANCE:
+                    verified = 2
+            except Exception:
+                pass
+
+        self._verified[sym] = verified
+        if chosen is not None and not chosen.empty:
+            self._cache.set(cache_key, chosen)
+        return chosen
+
+    def source_for(self, ticker: str) -> tuple:
         return self._last_source.get(ticker.lower(), ("unknown", None))
+
+    def verified_count_for(self, ticker: str) -> int:
+        return self._verified.get(ticker.lower(), 0)
 
     def _fetch_stooq(self, sym: str) -> Optional[pd.DataFrame]:
         try:

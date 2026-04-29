@@ -169,6 +169,12 @@
 .src-badge.historical-only { background: rgba(210, 153, 34, 0.15); color: var(--yellow); }
 .src-badge.mock           { background: rgba(248, 81, 73, 0.18); color: var(--red); border-color: var(--red); }
 .src-badge.unavailable    { background: rgba(139, 148, 158, 0.12); color: var(--muted); }
+.verified-dot {
+  display: inline-block; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--green); color: #000;
+  font-size: 9px; font-weight: 900; line-height: 12px; text-align: center;
+  vertical-align: middle; margin-left: 4px;
+}
 
 /* ---------- card view ---------- */
 .results-cards {

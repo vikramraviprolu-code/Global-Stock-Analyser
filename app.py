@@ -383,14 +383,25 @@ def _enrich_ticker_with_scores(ticker: str):
 
 @app.route("/api/metrics", methods=["POST"])
 def api_metrics():
-    """Batch-enrich a list of tickers for watchlists / compare. Up to 6 to
-    keep response time bounded."""
+    """Batch-enrich a list of tickers for watchlists / compare. Up to 12.
+
+    Optional payload fields:
+      - include_sparkline: bool — attach `recent_closes` per match
+      - sparkline_days: int (20–250, default 60)
+    """
     data = request.get_json(silent=True) or {}
     tickers = data.get("tickers") or []
     if not isinstance(tickers, list) or not tickers:
         return jsonify({"error": "tickers (list) required."}), 400
     if len(tickers) > 12:
         return jsonify({"error": "Max 12 tickers per request."}), 400
+
+    include_sparkline = bool(data.get("include_sparkline", False))
+    try:
+        sparkline_days = int(data.get("sparkline_days") or 60)
+    except (TypeError, ValueError):
+        sparkline_days = 60
+    sparkline_days = max(20, min(sparkline_days, 250))
 
     cleaned = []
     for t in tickers:
@@ -410,6 +421,20 @@ def api_metrics():
             res = fut.result()
             if res:
                 out.append(res)
+
+    if include_sparkline:
+        for m in out:
+            t = m["security"]["ticker"]
+            try:
+                df = _universe_service.fetch_history_for(t)
+                if df is not None and not df.empty:
+                    closes = [float(x) for x in df["Close"].tolist() if x == x][-sparkline_days:]
+                    m["recent_closes"] = closes
+                else:
+                    m["recent_closes"] = []
+            except Exception:
+                m["recent_closes"] = []
+
     # Preserve original order
     by_ticker = {m["security"]["ticker"]: m for m in out}
     ordered = [by_ticker[t] for t in cleaned if t in by_ticker]

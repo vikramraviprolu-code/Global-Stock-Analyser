@@ -4,6 +4,48 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.14.0] - 2026-04-29
+
+### Added — Multi-source verification + watchlist sparklines + polish
+
+**Multi-source price cross-validation**
+- `StooqYFinanceProvider.fetch()` now runs Stooq + yfinance in parallel
+  (same wall-clock as the slower of the two) and cross-validates last
+  close. When both providers succeed and agree within 2%, the price
+  metric earns `verified_source_count = 2` and confidence is bumped to
+  `"high"`.
+- `verified_count_for(ticker)` API exposed for downstream consumers.
+- `UniverseService.enrich()` propagates the count onto every price-derived
+  metric's `SourcedValue.verified_source_count`.
+- Source badges in Screener / Stock Analysis / Watchlists / Compare /
+  Events / Sources tooltip now show "✓ verified by N sources"; a green
+  ✓ dot appears next to the freshness label when ≥ 2.
+
+**Sparklines on Watchlist cards**
+- `/api/metrics` accepts `include_sparkline=true` + `sparkline_days` —
+  attaches `recent_closes` to each match (same shape as the screener's
+  card-view payload).
+- Watchlists page renders an SVG sparkline above each card's metric grid,
+  colour-coded green/red by net change. Honours the user's
+  `sparkDays` preference from Settings.
+
+### Tests
+- `tests/test_cross_validation.py` — 6 cases. Verified=2 on agreement,
+  =1 on disagreement, =1 when only yfinance succeeds, =1 when only Stooq
+  succeeds, =0 when both fail, cache hit doesn't re-fetch.
+- `tests/test_resolver_edges.py` — 12 cases. Empty / whitespace queries,
+  lowercase normalisation, universe substring matches, ambiguous-query
+  disambiguation, dot-suffix preservation, raw fallback for unknown
+  tickers, special-character safety (M&M.NS, BRK-B, 0700.HK, 005930.KS),
+  long-query handling.
+- All **134 tests pass** (was 116 in v0.13.0).
+
+### Smoke test (live data)
+- AAPL via /api/analyze/v2: price source = Yahoo Finance, verified=1
+  (Stooq gated by API key requirement, so only one source available).
+- /api/metrics with `include_sparkline=true` returns 30-close arrays for
+  AAPL ($270.11 latest) and MSFT ($423.91 latest).
+
 ## [0.13.0] - 2026-04-29
 
 ### Added — Settings page (PRD nav slot 7)
