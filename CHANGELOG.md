@@ -4,6 +4,49 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.13.0] - 2026-04-29
+
+### Added — Settings page (PRD nav slot 7)
+
+**`/settings`** — final PRD nav slot wired up. Closes 100% of PRD nav.
+
+- **Preferences** (localStorage)
+  - Default landing page (Screener / Stock Analysis / Watchlists / Compare / Events / Data Quality)
+  - Sparkline range (30 / 60 / 90 / 180 days) — applied by Compare page
+  - Compact table density default — applied by Screener
+  - Open Screener in card view by default — applied by Screener
+- **Watchlists management** — list / rename / delete from settings page directly.
+- **Custom Screener Presets management** — list / delete saved presets.
+- **Server Info** — version, Python, platform, URL prefix, TLS status,
+  trusted hosts, auto-shutdown config, universe size, cache stats.
+- **Clear server cache** button — forces re-fetch of live data
+  (CSRF-protected: requires loopback peer + trusted Origin).
+- **Reset all preferences** — wipes every localStorage key the app uses.
+- About section with repo link.
+
+**Backend endpoints**
+- `GET /api/settings/server-info` — JSON with all server state.
+- `POST /api/settings/clear-cache` — drops `_enriched_cache` (loopback +
+  trusted-Origin only; same CSRF guard as `/api/shutdown`).
+
+**Default-landing redirect**
+- Screener page (`/`) now reads `equityscope.prefs.landing` on load and
+  redirects accordingly — only when the user is on `/` with no query
+  string, so deep-links keep working.
+
+### Tests
+- `tests/test_settings.py` — 7 cases: settings route renders, server-info
+  payload shape, version string, clear-cache CSRF rejection (no Origin /
+  untrusted Origin → 403; trusted Origin → 200), Settings link present
+  in nav.
+- All **116 tests pass** (was 109 in v0.12.0).
+
+### PRD coverage
+**100% of the 7 navigation pages now built.** Build Steps 1–7 all
+complete + Settings page wired. Outstanding items are minor (multi-
+provider verification for `verified_source_count > 1`; investor-day
+events not in any free public source).
+
 ## [0.12.0] - 2026-04-29
 
 ### Added — Build Steps 5 + 6 + 7 (Data Quality + Events + Scenario Recommendation)

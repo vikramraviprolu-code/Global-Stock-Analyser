@@ -200,11 +200,16 @@ async function runCompare() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tickers }),
       }).then((r) => r.json()),
-      ...tickers.map((t) =>
-        fetch(APP_BASE + "/api/sparkline?ticker=" + encodeURIComponent(t) + "&days=90")
+      ...tickers.map((t) => {
+        let days = 90;
+        try {
+          const prefs = JSON.parse(localStorage.getItem("equityscope.prefs") || "{}");
+          if (prefs.sparkDays) days = parseInt(prefs.sparkDays);
+        } catch (e) {}
+        return fetch(APP_BASE + "/api/sparkline?ticker=" + encodeURIComponent(t) + "&days=" + days)
           .then((r) => r.ok ? r.json() : { ticker: t, closes: [] })
-          .catch(() => ({ ticker: t, closes: [] }))
-      ),
+          .catch(() => ({ ticker: t, closes: [] }));
+      }),
     ]);
 
     if (metricsRes.error) {

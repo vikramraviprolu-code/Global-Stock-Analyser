@@ -838,6 +838,25 @@ $("clear-filters").onclick = () => {
   });
 };
 
+// Apply persisted prefs (default-landing redirect, compact, card-default)
+try {
+  const prefs = JSON.parse(localStorage.getItem("equityscope.prefs") || "{}");
+  // Redirect to user's preferred landing page (only when arriving at /)
+  if (prefs.landing && (window.location.pathname === APP_BASE + "/" || window.location.pathname === "/")
+      && prefs.landing !== "/screener" && !window.location.search) {
+    window.location.replace(APP_BASE + prefs.landing);
+  }
+  if (prefs.compact) {
+    compact = true;
+    document.body.classList.add("compact");
+  }
+  if (prefs.cardDefault) {
+    currentView = "cards";
+    document.querySelectorAll(".vt-btn").forEach((x) => x.classList.remove("active"));
+    document.querySelector('.vt-btn[data-view="cards"]').classList.add("active");
+  }
+} catch (e) {}
+
 renderColsPanel();
 loadPresets();
 </script>

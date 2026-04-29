@@ -285,6 +285,11 @@ def events_page():
     return render_template("events.html")
 
 
+@app.route("/settings")
+def settings_page():
+    return render_template("settings.html")
+
+
 # ----- v2 API ----------------------------------------------------------------
 
 @app.route("/api/screener/presets")
@@ -503,6 +508,39 @@ def api_sparkline():
         "first": closes[0] if closes else None,
         "last": closes[-1] if closes else None,
     }))
+
+
+@app.route("/api/settings/server-info")
+def api_server_info():
+    """Server-side info for the Settings page."""
+    import platform
+    import sys
+    cache_stats = _universe_service._enriched_cache.stats()
+    return jsonify({
+        "version": "0.13.0",
+        "python": sys.version.split()[0],
+        "platform": platform.platform(),
+        "url_prefix": URL_PREFIX or "/",
+        "trusted_hosts": sorted(TRUSTED_HOSTS),
+        "tls_enabled": bool(os.getenv("SSL_CERT") and os.getenv("SSL_KEY")),
+        "auto_shutdown": AUTO_SHUTDOWN,
+        "idle_timeout": IDLE_TIMEOUT,
+        "universe_size": len(_universe_service.rows()),
+        "cache_stats": cache_stats,
+    })
+
+
+@app.route("/api/settings/clear-cache", methods=["POST"])
+def api_clear_cache():
+    """Drop the enrichment cache so the next request re-fetches live data.
+
+    Same-origin only (POST + Origin allow-list)."""
+    if not _is_loopback(request.remote_addr or ""):
+        return jsonify({"error": "Forbidden."}), 403
+    if not _origin_is_trusted():
+        return jsonify({"error": "Cross-origin clear-cache blocked."}), 403
+    _universe_service._enriched_cache.clear()
+    return jsonify({"cleared": True})
 
 
 @app.route("/api/sources/health")

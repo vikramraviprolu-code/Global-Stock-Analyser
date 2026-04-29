@@ -16,7 +16,7 @@
       <a href="{{ url_for('events_page') }}" class="{{ 'active' if active_page == 'events' else '' }}">Events</a>
       <a href="{{ url_for('data_quality_page') }}" class="{{ 'active' if active_page == 'data-quality' else '' }}">Data Quality</a>
       <a href="{{ url_for('sources_page') }}" class="{{ 'active' if active_page == 'sources' else '' }}">Sources</a>
-      <a href="#" class="disabled" title="Coming soon">Settings</a>
+      <a href="{{ url_for('settings_page') }}" class="{{ 'active' if active_page == 'settings' else '' }}">Settings</a>
     </div>
   </div>
 </nav>

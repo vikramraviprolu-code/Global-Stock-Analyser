@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Settings — EquityScope</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='screener.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='analysis.css') }}">
+<script src="{{ url_for('static', filename='watchlist.js') }}"></script>
+</head>
+<body>
+{% set active_page = 'settings' %}
+{% include '_nav.html' %}
+
+<div class="screener-shell" style="grid-template-columns: 1fr;">
+  <section class="results-panel">
+    <header class="results-header">
+      <div>
+        <h1>Settings</h1>
+        <p class="muted">All preferences live in this browser only — no login, no sync. Use Reset to wipe.</p>
+      </div>
+    </header>
+
+    <div class="settings-grid">
+
+      <div class="card">
+        <h2>Preferences</h2>
+        <div class="setting-row">
+          <label>Default landing page</label>
+          <select id="pref-landing">
+            <option value="/screener">Screener</option>
+            <option value="/app">Stock Analysis</option>
+            <option value="/watchlists">Watchlists</option>
+            <option value="/compare">Compare</option>
+            <option value="/events">Events</option>
+            <option value="/data-quality">Data Quality</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label>Sparkline range (days)</label>
+          <select id="pref-spark-days">
+            <option value="30">30</option>
+            <option value="60" selected>60</option>
+            <option value="90">90</option>
+            <option value="180">180</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label class="setting-check">
+            <input id="pref-compact" type="checkbox"> Default to compact table density
+          </label>
+        </div>
+        <div class="setting-row">
+          <label class="setting-check">
+            <input id="pref-card-default" type="checkbox"> Open Screener in card view by default
+          </label>
+        </div>
+        <button id="save-prefs" class="btn-primary">Save preferences</button>
+      </div>
+
+      <div class="card">
+        <h2>Watchlists</h2>
+        <p class="muted" style="font-size: 12px;">Stored in this browser. Click ✏ to rename, ✕ to delete (last list cannot be deleted).</p>
+        <div id="settings-watchlists"></div>
+      </div>
+
+      <div class="card">
+        <h2>Custom Screener Presets</h2>
+        <p class="muted" style="font-size: 12px;">Saved from the Screener filter sidebar. Click to inspect, ✕ to delete.</p>
+        <div id="settings-presets"></div>
+      </div>
+
+      <div class="card">
+        <h2>Server Info</h2>
+        <div id="server-info" class="muted">Loading…</div>
+        <button id="clear-cache" class="btn-ghost" style="margin-top: 12px;">↻ Clear server cache</button>
+      </div>
+
+      <div class="card">
+        <h2>Reset</h2>
+        <p>Wipe every locally-stored preference: watchlists, custom presets, column visibility, defaults. This cannot be undone.</p>
+        <button id="reset-all" class="btn-danger">⚠ Reset all preferences</button>
+      </div>
+
+      <div class="card">
+        <h2>About</h2>
+        <ul style="font-size: 13px; line-height: 1.8; padding-left: 18px;">
+          <li><strong>EquityScope v2</strong> — global stock discovery + analysis platform</li>
+          <li>Data: free / public sources only (Stooq → yfinance fallback, yfinance fundamentals, mkcert local CA)</li>
+          <li>No login, no sync, no telemetry</li>
+          <li>Repo: <a href="https://github.com/vikramraviprolu-code/Global-Stock-Analyser" target="_blank" rel="noopener">github.com/vikramraviprolu-code/Global-Stock-Analyser</a></li>
+        </ul>
+      </div>
+
+    </div>
+
+    <p class="disclaimer">
+      This analysis is for informational purposes only and is not financial advice.
+      Free-source market data may be delayed, incomplete, adjusted, stale, or unavailable.
+    </p>
+  </section>
+</div>
+
+<script>
+const APP_BASE = {{ request.script_root|tojson }};
+const $ = (id) => document.getElementById(id);
+
+const PREF_KEY = "equityscope.prefs";
+const COL_STATE_KEY = "equityscope.colState";
+const CUSTOM_PRESETS_KEY = "equityscope.customPresets";
+const WATCHLIST_KEY = "equityscope.watchlists";
+
+function loadPrefs() {
+  try { return JSON.parse(localStorage.getItem(PREF_KEY) || "{}"); }
+  catch (e) { return {}; }
+}
+function savePrefs(p) { localStorage.setItem(PREF_KEY, JSON.stringify(p)); }
+
+function hydrate() {
+  const p = loadPrefs();
+  if (p.landing) $("pref-landing").value = p.landing;
+  if (p.sparkDays) $("pref-spark-days").value = String(p.sparkDays);
+  $("pref-compact").checked = !!p.compact;
+  $("pref-card-default").checked = !!p.cardDefault;
+  renderWatchlists();
+  renderPresets();
+  loadServerInfo();
+}
+
+$("save-prefs").onclick = () => {
+  const p = {
+    landing: $("pref-landing").value,
+    sparkDays: parseInt($("pref-spark-days").value),
+    compact: $("pref-compact").checked,
+    cardDefault: $("pref-card-default").checked,
+  };
+  savePrefs(p);
+  alert("Preferences saved.");
+};
+
+// ---------- watchlists ----------
+function renderWatchlists() {
+  const names = Watchlists.names();
+  const active = Watchlists.activeName();
+  if (!names.length) {
+    $("settings-watchlists").innerHTML = '<div class="muted">No watchlists. Create one from the Watchlists page.</div>';
+    return;
+  }
+  $("settings-watchlists").innerHTML = names.map((n) => `
+    <div class="settings-row-item">
+      <span class="${n === active ? 'active' : ''}">
+        ${n} <span class="muted">(${Watchlists.list(n).length} ticker${Watchlists.list(n).length === 1 ? '' : 's'})</span>
+      </span>
+      <span>
+        <button class="btn-ghost mini" data-rename="${n}">✏</button>
+        <button class="btn-ghost mini" data-delete="${n}">✕</button>
+      </span>
+    </div>`).join("");
+  $("settings-watchlists").querySelectorAll("[data-rename]").forEach((b) =>
+    b.onclick = () => {
+      const old = b.dataset.rename;
+      const name = prompt(`Rename "${old}" to:`, old);
+      if (name && Watchlists.rename(old, name)) renderWatchlists();
+      else if (name) alert("Rename failed (already exists?).");
+    }
+  );
+  $("settings-watchlists").querySelectorAll("[data-delete]").forEach((b) =>
+    b.onclick = () => {
+      const n = b.dataset.delete;
+      if (!confirm(`Delete watchlist "${n}"?`)) return;
+      if (Watchlists.drop(n)) renderWatchlists();
+      else alert("Cannot delete the last remaining watchlist.");
+    }
+  );
+}
+
+// ---------- custom presets ----------
+function renderPresets() {
+  let presets;
+  try { presets = JSON.parse(localStorage.getItem(CUSTOM_PRESETS_KEY) || "{}"); }
+  catch (e) { presets = {}; }
+  const keys = Object.keys(presets);
+  if (!keys.length) {
+    $("settings-presets").innerHTML = '<div class="muted">No custom presets. Save some from the Screener.</div>';
+    return;
+  }
+  $("settings-presets").innerHTML = keys.map((k) => {
+    const p = presets[k];
+    return `<div class="settings-row-item">
+      <span>${p.name} <span class="muted">(${p.filters.length} filter${p.filters.length === 1 ? '' : 's'})</span></span>
+      <button class="btn-ghost mini" data-del-preset="${k}">✕</button>
+    </div>`;
+  }).join("");
+  $("settings-presets").querySelectorAll("[data-del-preset]").forEach((b) =>
+    b.onclick = () => {
+      const k = b.dataset.delPreset;
+      if (!confirm(`Delete preset "${k}"?`)) return;
+      const presets = JSON.parse(localStorage.getItem(CUSTOM_PRESETS_KEY) || "{}");
+      delete presets[k];
+      localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(presets));
+      renderPresets();
+    }
+  );
+}
+
+// ---------- server info ----------
+async function loadServerInfo() {
+  try {
+    const r = await fetch(APP_BASE + "/api/settings/server-info");
+    const d = await r.json();
+    $("server-info").innerHTML = `
+      <table class="kv-table">
+        <tr><th>Version</th><td><strong>${d.version}</strong></td></tr>
+        <tr><th>Python</th><td>${d.python}</td></tr>
+        <tr><th>Platform</th><td>${d.platform}</td></tr>
+        <tr><th>URL prefix</th><td><code>${d.url_prefix}</code></td></tr>
+        <tr><th>TLS enabled</th><td>${d.tls_enabled ? '✓' : '—'}</td></tr>
+        <tr><th>Trusted hosts</th><td>${d.trusted_hosts.join(", ")}</td></tr>
+        <tr><th>Auto-shutdown</th><td>${d.auto_shutdown ? `enabled (${d.idle_timeout}s idle)` : 'disabled (always-on daemon)'}</td></tr>
+        <tr><th>Universe size</th><td>${d.universe_size} tickers</td></tr>
+        <tr><th>Cache entries</th><td>${d.cache_stats.entries} (TTL ${d.cache_stats.ttl_seconds}s)</td></tr>
+      </table>
+    `;
+  } catch (e) {
+    $("server-info").innerHTML = '<div class="error">Failed to load.</div>';
+  }
+}
+
+$("clear-cache").onclick = async () => {
+  if (!confirm("Clear the server enrichment cache? Next requests will re-fetch live data (slower).")) return;
+  try {
+    const r = await fetch(APP_BASE + "/api/settings/clear-cache", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const d = await r.json();
+    if (d.cleared) {
+      alert("Server cache cleared.");
+      loadServerInfo();
+    } else {
+      alert("Clear failed: " + (d.error || "unknown"));
+    }
+  } catch (e) {
+    alert("Network error: " + e.message);
+  }
+};
+
+$("reset-all").onclick = () => {
+  if (!confirm("Wipe ALL local preferences (watchlists, presets, column visibility, defaults)?\n\nThis cannot be undone.")) return;
+  [PREF_KEY, COL_STATE_KEY, CUSTOM_PRESETS_KEY, WATCHLIST_KEY].forEach((k) => localStorage.removeItem(k));
+  alert("All preferences reset. The page will reload.");
+  location.reload();
+};
+
+hydrate();
+</script>
+</body>
+</html>
