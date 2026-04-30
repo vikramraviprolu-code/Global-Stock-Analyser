@@ -35,7 +35,16 @@ jobs:
       - name: Import smoke test
         run: |
           python -c "import app, analyzer, market_data, markets, resolver; print('imports OK')"
+          python -c "import calc, providers, screener, models; print('packages OK')"
 
       - name: Run tests
-        run: pytest -q || echo "no tests yet"
-        continue-on-error: true
+        run: pytest tests/ -q
+
+  version-sync:
+    # Strict — fails the build if README / SECURITY / CHANGELOG / app.py
+    # version pins are out of step with pyproject.toml. See RELEASING.md.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate version pins are in sync
+        run: bash scripts/check_version_sync.sh

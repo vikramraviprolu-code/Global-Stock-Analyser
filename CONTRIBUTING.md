@@ -53,6 +53,24 @@ python app.py            # http://127.0.0.1:5050
 3. Update [README.md](README.md) if user-facing behavior changes.
 4. Open a PR using the template; link any related issue.
 
+## Releasing a new version
+
+**Strict rule:** every version bump must update all docs in lock-step. See
+[RELEASING.md](RELEASING.md) for the full checklist. The release script
+won't push until every doc / version pin matches.
+
+```bash
+bash scripts/check_version_sync.sh
+```
+
+Required parity across:
+
+- `pyproject.toml` — `version = "X.Y.Z"`
+- `app.py` — `/api/settings/server-info` returns `"version": "X.Y.Z"`
+- `README.md` — version badge + "What's new in vX.Y.Z" header
+- `SECURITY.md` — "Latest: **vX.Y.Z**" line
+- `CHANGELOG.md` — top entry `## [X.Y.Z] - YYYY-MM-DD`
+
 ## Commit style
 
 Imperative mood, short subject (≤ 70 chars), optional body for context:
