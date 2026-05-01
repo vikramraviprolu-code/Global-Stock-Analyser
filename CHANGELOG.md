@@ -4,6 +4,96 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.22.0] - 2026-05-02
+
+### Added — Wire-up release (post-PRD): risk profile, watchlist export, global alerts polling
+
+PRD Build Steps 1–13 shipped in v0.21.0. v0.22.0 wires three already-built
+components into their natural touch points so the user experience matches
+what the PRD promised end-to-end. No new dependencies. No new endpoints.
+0 schema changes.
+
+**1. Risk profile → Recommendation thresholds.**
+`calc/recommendation.py` gains a `RISK_THRESHOLDS` table mapping each of
+the five risk buckets (Conservative / Moderate / Balanced / Growth /
+Aggressive) to a six-key threshold set:
+
+```python
+{ "buy_value", "buy_momentum", "buy_risk_max",
+  "buy_dc_min", "avoid_momentum", "avoid_risk" }
+```
+
+`build_scenario(...)` now accepts a `risk_bucket` kwarg and selects the
+matching set via `_thresholds_for(bucket)` (falls back to `balanced` for
+unknown / `None`). The Buy / Watch / Avoid logic and the
+`confidence_reason` text both reference the bucket explicitly so the
+user sees `[Conservative profile]` on the recommendation and knows which
+threshold set fired.
+
+`/api/analyze/v2` accepts `risk_bucket` in the JSON payload, validates
+against the allow-list `{conservative, moderate, balanced, growth,
+aggressive}`, and forwards to `build_scenario`. The frontend
+(`templates/index.html`) now reads `RiskProfile.currentBucket()` from
+`localStorage["equityscope.riskProfile"]` and includes it on every
+analyze fetch — so retaking the questionnaire immediately retunes
+the next recommendation.
+
+The scenario response payload gains two metadata fields,
+`risk_bucket` and `thresholds_used`, surfacing the active bucket and
+its full threshold dict for transparency / explainer drawers.
+
+**2. Watchlist CSV + JSON export.**
+Two new actions in the Watchlists sidebar (`templates/watchlists.html`):
+`↓ CSV` and `↓ JSON`. The `exportWatchlist(fmt)` helper assembles a
+20-column CSV with quoted strings + numeric coercion (ticker, company,
+country, sector, currency, price, market-cap-USD, trailing P/E, perf
+5D, RSI 14, ROC 14D, ROC 21D, % from 52-week low, the four scores,
+data confidence, price freshness, price source) or a structured JSON
+dump containing `{ watchlist, exportedAt, tickers, metrics }`. Files
+download as `watchlist-<safeName>-<timestamp>.<ext>`. No PII, no
+network round-trip — pure local-state export.
+
+**3. Alerts background polling on every page.**
+`static/alerts.js` is now bulk-injected into all 12 user-facing
+templates (`index`, `watchlists`, `screener`, `compare`, `events`,
+`news`, `data_quality`, `sources`, `settings`, `portfolio`,
+`risk_profile`, `privacy`). Each injection includes a tiny
+`window.APP_BASE` bootstrap so cross-page polling builds the right
+URL under the `/Local` mount. The `Page Visibility API` keeps the
+poller idle when the tab is hidden — same battery / network discipline
+as before, just running everywhere instead of only on the dedicated
+alerts panel.
+
+### Tests
+
+`tests/test_wireup.py` adds 23 wire-up tests:
+
+- 7 `RISK_THRESHOLDS` / `_thresholds_for` / `build_scenario(risk_bucket=...)`
+  unit tests including a conservative-vs-aggressive ordering invariant.
+- 3 `/api/analyze/v2` payload tests: valid bucket round-trip, unknown
+  bucket falls back to default, missing bucket uses default.
+- 1 watchlist-template export-button presence check.
+- 12 parametrised checks that `alerts.js` is referenced from every
+  user-facing template.
+
+Total: **222 tests passing** (up from 199).
+
+### Docs
+
+- `README.md` — version badge bump + new "What's new in v0.22.0" section.
+- `SECURITY.md` — `Latest: **v0.22.0**`.
+- This `CHANGELOG.md` entry.
+
+### Compatibility
+
+- Backward-compatible: existing `/api/analyze/v2` clients that don't
+  send `risk_bucket` continue to receive `balanced` thresholds — same
+  behaviour as v0.21.0.
+- `localStorage` keys unchanged. No data migration.
+- No new dependencies in `requirements.txt` / `pyproject.toml`.
+
+---
+
 ## [0.21.0] - 2026-05-02
 
 ### Added — Polish + perf budget (PRD Build Step 13, final step)

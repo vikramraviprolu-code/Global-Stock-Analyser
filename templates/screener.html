@@ -10,6 +10,13 @@
 <script src="{{ url_for('static', filename='ui.js') }}"></script>
 <script src="{{ url_for('static', filename='format.js') }}"></script>
 <script src="{{ url_for('static', filename='consent.js') }}"></script>
+<script src="{{ url_for('static', filename='alerts.js') }}"></script>
+<script>
+// alerts.js needs APP_BASE for its background poller. Set if not already.
+if (typeof window.APP_BASE === 'undefined') {
+  window.APP_BASE = {{ request.script_root|tojson }};
+}
+</script>
 <script src="{{ url_for('static', filename='explainer.js') }}"></script>
 <script src="{{ url_for('static', filename='watchlist.js') }}"></script>
 </head>

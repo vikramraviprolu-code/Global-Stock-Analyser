@@ -619,7 +619,7 @@ def api_server_info():
     import sys
     cache_stats = _universe_service._enriched_cache.stats()
     return jsonify({
-        "version": "0.21.0",
+        "version": "0.22.0",
         "python": sys.version.split()[0],
         "platform": platform.platform(),
         "url_prefix": URL_PREFIX or "/",
@@ -1022,8 +1022,14 @@ def api_analyze_v2():
         "trailing_pe": m.trailing_pe, "percent_from_low": m.percent_from_low,
         "security": m.security.to_dict(),
     }
+    # Honour risk-profile bucket from caller (frontend reads it from
+    # localStorage["equityscope.riskProfile"]). Validated against allow-list.
+    bucket_in = data.get("risk_bucket")
+    valid_buckets = {"conservative", "moderate", "balanced", "growth", "aggressive"}
+    risk_bucket = bucket_in if bucket_in in valid_buckets else None
     try:
-        scenario = build_scenario(metrics_for_scenario, scores, events_dict)
+        scenario = build_scenario(metrics_for_scenario, scores, events_dict,
+                                  risk_bucket=risk_bucket)
     except Exception:
         app.logger.exception("Scenario build failed for %s", ticker)
         scenario = None

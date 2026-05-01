@@ -27,10 +27,40 @@ def _txt_value(sv) -> Optional[str]:
     return val if isinstance(val, str) else None
 
 
-def build_scenario(metrics: dict, scores: dict, events: Optional[dict] = None) -> dict:
+# Risk-profile-aware Buy thresholds. Each bucket sets the minimum scores
+# (and maximum risk) before "Buy" can fire. None of these are advice — they
+# adjust how aggressive the recommender is for the same input data.
+RISK_THRESHOLDS = {
+    "conservative": {"buy_value": 50, "buy_momentum": 75, "buy_risk_max": 30,
+                     "buy_dc_min": 70, "avoid_momentum": 35, "avoid_risk": 60},
+    "moderate":     {"buy_value": 45, "buy_momentum": 70, "buy_risk_max": 40,
+                     "buy_dc_min": 55, "avoid_momentum": 30, "avoid_risk": 65},
+    "balanced":     {"buy_value": 40, "buy_momentum": 65, "buy_risk_max": 50,
+                     "buy_dc_min": 40, "avoid_momentum": 25, "avoid_risk": 70},
+    "growth":       {"buy_value": 30, "buy_momentum": 55, "buy_risk_max": 65,
+                     "buy_dc_min": 40, "avoid_momentum": 20, "avoid_risk": 80},
+    "aggressive":   {"buy_value": 25, "buy_momentum": 45, "buy_risk_max": 75,
+                     "buy_dc_min": 35, "avoid_momentum": 15, "avoid_risk": 90},
+}
+DEFAULT_BUCKET = "balanced"
+
+
+def _thresholds_for(bucket: Optional[str]) -> dict:
+    return RISK_THRESHOLDS.get(bucket or DEFAULT_BUCKET, RISK_THRESHOLDS[DEFAULT_BUCKET])
+
+
+def build_scenario(
+    metrics: dict,
+    scores: dict,
+    events: Optional[dict] = None,
+    risk_bucket: Optional[str] = None,
+) -> dict:
     """metrics: dict-shape with SourcedValue or {value: ...} entries.
     scores: StockScores dataclass OR dict from .to_dict().
     events: optional dict of SourcedValue events (earnings_date etc.)
+    risk_bucket: optional one of conservative / moderate / balanced /
+                 growth / aggressive — tunes Buy / Avoid thresholds.
+                 Falls back to "balanced" defaults.
     """
     # Normalise scores to dict of {key: value (float)}
     score_vals = {}
@@ -161,26 +191,34 @@ def build_scenario(metrics: dict, scores: dict, events: Optional[dict] = None) -
         invalidation = "Insufficient data to set a precise invalidation level — use stop based on personal risk."
 
     # --- Final Rating + Confidence Reason ---------------------------------
-    if dc < 40:
+    th = _thresholds_for(risk_bucket)
+    bucket_label = (risk_bucket or DEFAULT_BUCKET).replace("_", " ").title()
+    if dc < th["buy_dc_min"]:
         rating = "Watch"
-        reason = (f"Data confidence is low ({dc:.0f}/100) — too many key metrics "
-                  f"missing or stale to commit to a directional call.")
-    elif m >= 65 and v >= 40 and r <= 50:
+        reason = (f"Data confidence is low ({dc:.0f}/100, needs ≥ {th['buy_dc_min']} "
+                  f"for {bucket_label} profile) — too many key metrics missing "
+                  f"or stale to commit to a directional call.")
+    elif m >= th["buy_momentum"] and v >= th["buy_value"] and r <= th["buy_risk_max"]:
         rating = "Buy"
-        reason = (f"Strong momentum ({m:.0f}/100) backed by reasonable value "
-                  f"({v:.0f}/100) and acceptable risk ({r:.0f}/100).")
-    elif m <= 25 or r >= 70:
+        reason = (f"Strong momentum ({m:.0f}/100, ≥ {th['buy_momentum']}) backed "
+                  f"by reasonable value ({v:.0f}/100, ≥ {th['buy_value']}) and "
+                  f"acceptable risk ({r:.0f}/100, ≤ {th['buy_risk_max']}). "
+                  f"[{bucket_label} profile]")
+    elif m <= th["avoid_momentum"] or r >= th["avoid_risk"]:
         rating = "Avoid"
-        reason = (f"Weak momentum ({m:.0f}/100) or elevated risk ({r:.0f}/100). "
-                  f"Wait for technical reset.")
+        reason = (f"Weak momentum ({m:.0f}/100, ≤ {th['avoid_momentum']}) or "
+                  f"elevated risk ({r:.0f}/100, ≥ {th['avoid_risk']}). "
+                  f"Wait for technical reset. [{bucket_label} profile]")
     elif v >= 65 and m >= 40:
         rating = "Buy"
         reason = (f"Compelling value ({v:.0f}/100) with improving momentum "
-                  f"({m:.0f}/100) — classic value-with-momentum setup.")
+                  f"({m:.0f}/100) — classic value-with-momentum setup. "
+                  f"[{bucket_label} profile]")
     else:
         rating = "Watch"
         reason = (f"Mixed signals — value {v:.0f}, momentum {m:.0f}, "
-                  f"risk {r:.0f}, data confidence {dc:.0f}. Wait for confirmation.")
+                  f"risk {r:.0f}, data confidence {dc:.0f}. Wait for "
+                  f"confirmation. [{bucket_label} profile]")
 
     # --- Time horizon -----------------------------------------------------
     if rating == "Buy":
@@ -220,4 +258,6 @@ def build_scenario(metrics: dict, scores: dict, events: Optional[dict] = None) -
         "final_rating": rating,
         "time_horizon": horizon,
         "catalysts": catalysts,
+        "risk_bucket": risk_bucket or DEFAULT_BUCKET,
+        "thresholds_used": th,
     }

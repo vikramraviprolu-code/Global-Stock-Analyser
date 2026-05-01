@@ -10,6 +10,13 @@
 <script src="{{ url_for('static', filename='ui.js') }}"></script>
 <script src="{{ url_for('static', filename='format.js') }}"></script>
 <script src="{{ url_for('static', filename='consent.js') }}"></script>
+<script src="{{ url_for('static', filename='alerts.js') }}"></script>
+<script>
+// alerts.js needs APP_BASE for its background poller. Set if not already.
+if (typeof window.APP_BASE === 'undefined') {
+  window.APP_BASE = {{ request.script_root|tojson }};
+}
+</script>
 <script src="{{ url_for('static', filename='explainer.js') }}"></script>
 </head>
 <body>
@@ -40,6 +47,8 @@
     <h2 style="margin-top: 24px;">Actions</h2>
     <button id="refresh-all" class="btn-primary">↻ Refresh metrics</button>
     <button id="compare-selected" class="btn-ghost">Compare selected</button>
+    <button id="export-csv" class="btn-ghost" aria-label="Export current watchlist as CSV">↓ CSV</button>
+    <button id="export-json" class="btn-ghost" aria-label="Export current watchlist as JSON">↓ JSON</button>
   </aside>
 
   <section class="results-panel">
@@ -324,6 +333,69 @@ $("compare-selected").onclick = () => {
   }
   window.location.href = APP_BASE + "/compare?tickers=" + encodeURIComponent(tickers.join(","));
 };
+
+function exportWatchlist(fmt) {
+  const list = Watchlists.list(Watchlists.activeName());
+  if (!list.length) {
+    UI && UI.toast ? UI.toast("Watchlist empty.", { type: "warning" })
+                   : alert("Watchlist empty.");
+    return;
+  }
+  const metrics = list.map((t) => cache[t]).filter(Boolean);
+  if (!metrics.length) {
+    UI && UI.toast ? UI.toast("Click Refresh first to load metrics.", { type: "warning" })
+                   : alert("Click Refresh first.");
+    return;
+  }
+  let payload, mime, ext;
+  if (fmt === "json") {
+    payload = JSON.stringify({
+      watchlist: Watchlists.activeName(),
+      exportedAt: new Date().toISOString(),
+      tickers: list,
+      metrics,
+    }, null, 2);
+    mime = "application/json"; ext = "json";
+  } else {
+    const headers = ["Ticker","Company","Country","Sector","Currency","Price",
+                     "MarketCapUSD","TrailingPE","Perf5D","RSI14","ROC14","ROC21",
+                     "PctFromLow","ValueScore","MomentumScore","QualityScore",
+                     "RiskScore","DataConfidence","PriceFreshness","PriceSource"];
+    const rows = metrics.map((m) => [
+      m.security.ticker,
+      (m.security.company_name || "").replaceAll('"','""'),
+      m.security.country || "",
+      m.security.sector || "",
+      m.security.currency || "",
+      m.price.value ?? "",
+      m.market_cap_usd.value ?? "",
+      m.trailing_pe.value ?? "",
+      m.five_day_performance.value ?? "",
+      m.rsi14.value ?? "",
+      m.roc14.value ?? "",
+      m.roc21.value ?? "",
+      m.percent_from_low.value ?? "",
+      m.scores.value_score.value,
+      m.scores.momentum_score.value,
+      m.scores.quality_score.value,
+      m.scores.risk_score.value,
+      m.scores.data_confidence_score.value,
+      m.price.freshness,
+      m.price.source_name,
+    ].map((v) => `"${String(v ?? "").replaceAll('"','""')}"`).join(","));
+    payload = headers.join(",") + "\n" + rows.join("\n");
+    mime = "text/csv"; ext = "csv";
+  }
+  const blob = new Blob([payload], { type: mime });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  const safeName = Watchlists.activeName().replace(/[^A-Za-z0-9_-]+/g, "-");
+  a.download = `watchlist-${safeName}-${Date.now()}.${ext}`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+$("export-csv").onclick = () => exportWatchlist("csv");
+$("export-json").onclick = () => exportWatchlist("json");
 document.querySelectorAll(".vt-btn").forEach((b) =>
   b.onclick = () => {
     document.querySelectorAll(".vt-btn").forEach((x) => x.classList.remove("active"));

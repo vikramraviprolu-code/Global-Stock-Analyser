@@ -3,8 +3,8 @@
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style](https://img.shields.io/badge/code%20style-pep8-orange.svg)](https://peps.python.org/pep-0008/)
-[![Tests](https://img.shields.io/badge/tests-134%20passing-brightgreen.svg)]()
-[![Version](https://img.shields.io/badge/version-0.21.0-blue.svg)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-222%20passing-brightgreen.svg)]()
+[![Version](https://img.shields.io/badge/version-0.22.0-blue.svg)](CHANGELOG.md)
 
 Free, no-API-key, open-source equity research platform. Discover stocks via a
 filterable Screener, drill into a full 8-tab Stock Analysis page, manage local
@@ -20,6 +20,33 @@ Inspired by TradingView, FINVIZ, Koyfin, Simply Wall St, and StockAnalysis.com
 — but **free / no API keys / no scraping by default**.
 
 ---
+
+## What's new in v0.22.0
+
+**Wire-up release — risk profile, watchlist export, global alerts polling.**
+
+- **Risk profile → Recommendation thresholds.** Buy / Watch / Avoid bands
+  now read from a 5-bucket `RISK_THRESHOLDS` table
+  (Conservative → Aggressive). The frontend forwards the user's
+  `equityscope.riskProfile` bucket on every `/api/analyze/v2` POST; the
+  server validates against an allow-list and falls back to `balanced`.
+  Reasons text now ends with `[Conservative profile]` so the user knows
+  which threshold set fired.
+- **Watchlist CSV + JSON export.** New `↓ CSV` and `↓ JSON` buttons in
+  the Watchlists sidebar. CSV is 20 columns (ticker, company, country,
+  sector, currency, price, market-cap-USD, P/E, perf 5D, RSI 14, ROC 14
+  / 21, % from low, four scores, data confidence, price freshness,
+  price source). JSON dumps `{watchlist, exportedAt, tickers, metrics}`.
+  Filename pattern: `watchlist-<safeName>-<ts>.<ext>`.
+- **Alerts background polling on every page.** `static/alerts.js` is now
+  injected into all 12 user-facing templates (snapshot, watchlists,
+  screener, compare, events, news, data-quality, sources, settings,
+  portfolio, risk-profile, privacy) so the visibility-aware poller runs
+  globally, not only on the alerts panel.
+- **+23 wire-up tests** in `tests/test_wireup.py` — bucket lookup,
+  conservative-vs-aggressive ordering, scenario metadata round-trip,
+  `/api/analyze/v2` bucket validation, watchlist export buttons present,
+  alerts.js loaded on every template. Total: **222 tests passing**.
 
 ## What's new in v0.21.0
 
