@@ -1,5 +1,86 @@
 /* v2 navigation + screener-specific styles. Builds on style.css tokens. */
 
+/* ---------- explainer drawer (education) ---------- */
+
+.explainer-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; padding: 0; margin-left: 4px;
+  background: var(--panel-2); color: var(--muted);
+  border: 1px solid var(--border); border-radius: 50%;
+  font-size: 11px; font-weight: 700;
+  cursor: pointer; font-family: inherit; line-height: 1;
+  transition: all 0.15s;
+  vertical-align: middle;
+}
+.explainer-icon:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.explainer-icon:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.explainer-backdrop {
+  position: fixed; inset: 0; z-index: 199;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.explainer-backdrop.open { opacity: 1; pointer-events: auto; }
+
+.explainer-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 200;
+  width: 380px; max-width: 90vw;
+  background: var(--panel); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform 0.25s ease;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.4);
+  outline: none;
+}
+.explainer-drawer.open { transform: translateX(0); }
+
+.explainer-drawer header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+}
+.explainer-drawer h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.explainer-close {
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+  width: 28px; height: 28px; border-radius: 4px;
+  font-size: 14px; cursor: pointer; font-family: inherit;
+}
+.explainer-close:hover { color: var(--text); border-color: var(--text); }
+.explainer-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.explainer-body {
+  padding: 16px 18px; overflow-y: auto; flex: 1;
+  font-size: 13px; line-height: 1.55;
+}
+.exp-section { margin-bottom: 16px; }
+.exp-section:last-child { margin-bottom: 0; }
+.exp-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--accent); font-weight: 700; margin-bottom: 4px;
+}
+.exp-section p { margin: 0; }
+.exp-section ul { padding-left: 18px; margin: 4px 0 0; }
+.exp-section li { margin-bottom: 4px; }
+.exp-formula {
+  font-family: ui-monospace, "SF Mono", "Menlo", monospace;
+  background: var(--bg); border: 1px solid var(--border);
+  padding: 8px 10px; border-radius: 4px;
+  font-size: 12px; color: var(--text);
+}
+.exp-caveats {
+  background: rgba(210, 153, 34, 0.08); border-left: 3px solid var(--yellow);
+  padding: 10px 14px; border-radius: 4px;
+}
+.exp-caveats .exp-label { color: var(--yellow); }
+.exp-link {
+  display: inline-block; padding: 6px 12px;
+  background: var(--accent); color: #fff !important;
+  border-radius: 4px; text-decoration: none; font-weight: 600;
+}
+.exp-link:hover { opacity: 0.9; }
+
+@media (max-width: 720px) {
+  .explainer-drawer { width: 100vw; max-width: 100vw; }
+}
+
 /* ---------- shared UI helpers (skeletons / empty state / toast) ---------- */
 
 @keyframes sk-shimmer {

@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='screener.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='analysis.css') }}">
 <script src="{{ url_for('static', filename='ui.js') }}"></script>
+<script src="{{ url_for('static', filename='explainer.js') }}"></script>
 <script src="{{ url_for('static', filename='watchlist.js') }}"></script>
 <script src="{{ url_for('static', filename='portfolio.js') }}"></script>
 <script src="{{ url_for('static', filename='vendor/lightweight-charts.standalone.production.js') }}"></script>
@@ -335,30 +336,30 @@ function renderSnapshot(i) {
     <div class="card">
       <h2>Snapshot</h2>
       <div class="grid">
-        <div class="metric"><div class="label">Price</div><div class="value">${sym} ${fmtN(i.price.value)}</div>${sourceBadge(i.price)}</div>
-        <div class="metric"><div class="label">52W High</div><div class="value">${sym} ${fmtN(i.fifty_two_week_high.value)}</div></div>
-        <div class="metric"><div class="label">52W Low</div><div class="value">${sym} ${fmtN(i.fifty_two_week_low.value)}</div></div>
-        <div class="metric"><div class="label">% From Low</div><div class="value ${cls(i.percent_from_low.value)}">${fmtPct(i.percent_from_low.value)}</div></div>
-        <div class="metric"><div class="label">5D</div><div class="value ${cls(i.five_day_performance.value)}">${fmtPct(i.five_day_performance.value)}</div></div>
-        <div class="metric"><div class="label">RSI 14</div><div class="value">${fmtN(i.rsi14.value, 1)}</div></div>
-        <div class="metric"><div class="label">ROC 14D</div><div class="value ${cls(i.roc14.value)}">${fmtPct(i.roc14.value)}</div></div>
-        <div class="metric"><div class="label">ROC 21D</div><div class="value ${cls(i.roc21.value)}">${fmtPct(i.roc21.value)}</div></div>
-        <div class="metric"><div class="label">20D MA</div><div class="value">${sym} ${fmtN(i.ma20.value)}</div></div>
-        <div class="metric"><div class="label">50D MA</div><div class="value">${sym} ${fmtN(i.ma50.value)}</div></div>
-        <div class="metric"><div class="label">200D MA</div><div class="value">${sym} ${fmtN(i.ma200.value)}</div></div>
-        <div class="metric"><div class="label">Avg Vol</div><div class="value">${fmtVol(i.avg_daily_volume.value)}</div></div>
-        <div class="metric"><div class="label">Market Cap (USD)</div><div class="value">${fmtMcap(i.market_cap_usd.value)}</div>${sourceBadge(i.market_cap_usd)}</div>
-        <div class="metric"><div class="label">Trailing P/E</div><div class="value">${fmtN(i.trailing_pe.value, 1)}</div>${sourceBadge(i.trailing_pe)}</div>
+        <div class="metric"><div class="label">Price ${Explainer.iconButton("price","price")}</div><div class="value">${sym} ${fmtN(i.price.value)}</div>${sourceBadge(i.price)}</div>
+        <div class="metric"><div class="label">52W High ${Explainer.iconButton("fifty_two_week_high","52-week high")}</div><div class="value">${sym} ${fmtN(i.fifty_two_week_high.value)}</div></div>
+        <div class="metric"><div class="label">52W Low ${Explainer.iconButton("fifty_two_week_low","52-week low")}</div><div class="value">${sym} ${fmtN(i.fifty_two_week_low.value)}</div></div>
+        <div class="metric"><div class="label">% From Low ${Explainer.iconButton("percent_from_low","% from low")}</div><div class="value ${cls(i.percent_from_low.value)}">${fmtPct(i.percent_from_low.value)}</div></div>
+        <div class="metric"><div class="label">5D ${Explainer.iconButton("five_day_performance","5-day performance")}</div><div class="value ${cls(i.five_day_performance.value)}">${fmtPct(i.five_day_performance.value)}</div></div>
+        <div class="metric"><div class="label">RSI 14 ${Explainer.iconButton("rsi14","RSI 14")}</div><div class="value">${fmtN(i.rsi14.value, 1)}</div></div>
+        <div class="metric"><div class="label">ROC 14D ${Explainer.iconButton("roc14","ROC 14")}</div><div class="value ${cls(i.roc14.value)}">${fmtPct(i.roc14.value)}</div></div>
+        <div class="metric"><div class="label">ROC 21D ${Explainer.iconButton("roc21","ROC 21")}</div><div class="value ${cls(i.roc21.value)}">${fmtPct(i.roc21.value)}</div></div>
+        <div class="metric"><div class="label">20D MA ${Explainer.iconButton("ma20","20-day moving average")}</div><div class="value">${sym} ${fmtN(i.ma20.value)}</div></div>
+        <div class="metric"><div class="label">50D MA ${Explainer.iconButton("ma50","50-day moving average")}</div><div class="value">${sym} ${fmtN(i.ma50.value)}</div></div>
+        <div class="metric"><div class="label">200D MA ${Explainer.iconButton("ma200","200-day moving average")}</div><div class="value">${sym} ${fmtN(i.ma200.value)}</div></div>
+        <div class="metric"><div class="label">Avg Vol ${Explainer.iconButton("avg_daily_volume","average daily volume")}</div><div class="value">${fmtVol(i.avg_daily_volume.value)}</div></div>
+        <div class="metric"><div class="label">Market Cap (USD) ${Explainer.iconButton("market_cap_usd","market cap")}</div><div class="value">${fmtMcap(i.market_cap_usd.value)}</div>${sourceBadge(i.market_cap_usd)}</div>
+        <div class="metric"><div class="label">Trailing P/E ${Explainer.iconButton("trailing_pe","trailing P/E")}</div><div class="value">${fmtN(i.trailing_pe.value, 1)}</div>${sourceBadge(i.trailing_pe)}</div>
       </div>
     </div>
     <div class="card">
       <h2>Score Overview</h2>
       <div class="score-grid">
-        <div class="score-cell"><div class="lbl">Value</div>${scoreBar100(i.scores.value_score)}</div>
-        <div class="score-cell"><div class="lbl">Momentum</div>${scoreBar100(i.scores.momentum_score)}</div>
-        <div class="score-cell"><div class="lbl">Quality</div>${scoreBar100(i.scores.quality_score)}</div>
-        <div class="score-cell"><div class="lbl">Risk (higher = riskier)</div>${scoreBar100(i.scores.risk_score, "risk_score")}</div>
-        <div class="score-cell"><div class="lbl">Data Confidence</div>${scoreBar100(i.scores.data_confidence_score)}</div>
+        <div class="score-cell"><div class="lbl">Value ${Explainer.iconButton("value_score","Value Score")}</div>${scoreBar100(i.scores.value_score)}</div>
+        <div class="score-cell"><div class="lbl">Momentum ${Explainer.iconButton("momentum_score","Momentum Score")}</div>${scoreBar100(i.scores.momentum_score)}</div>
+        <div class="score-cell"><div class="lbl">Quality ${Explainer.iconButton("quality_score","Quality Score")}</div>${scoreBar100(i.scores.quality_score)}</div>
+        <div class="score-cell"><div class="lbl">Risk (higher = riskier) ${Explainer.iconButton("risk_score","Risk Score")}</div>${scoreBar100(i.scores.risk_score, "risk_score")}</div>
+        <div class="score-cell"><div class="lbl">Data Confidence ${Explainer.iconButton("data_confidence_score","Data Confidence Score")}</div>${scoreBar100(i.scores.data_confidence_score)}</div>
       </div>
       <div class="peer-summary">
         ${fail.cheaper_than_peers ? '<span class="ps-tag green">✓ Cheaper than peers</span>' : '<span class="ps-tag red">✗ Pricier than peers</span>'}
@@ -367,6 +368,7 @@ function renderSnapshot(i) {
         ${fail.higher_risk_than_peers ? '<span class="ps-tag red">⚠ Higher risk than peers</span>' : '<span class="ps-tag green">✓ Lower risk than peers</span>'}
       </div>
     </div>`;
+  if (window.Explainer) Explainer.attachAll($("snapshot"));
 }
 
 // ---------- Value ----------

@@ -4,6 +4,62 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.19.0] - 2026-05-01
+
+### Added — Education / explainer drawers (PRD Build Step 11)
+
+**`static/explainer.js`** — slide-out drawer + content registry covering
+40+ concepts the app surfaces (every metric, score, chart element,
+peer-matrix concept, scenario field, screener concept, workspace
+concept, news heuristic, data-quality concept).
+
+Each entry carries:
+- `definition` — plain-English explanation
+- `formula` — exact computation method (where applicable)
+- `interpretation` — bullet list of how to read the value
+- `caveats` — limitations, edge cases, "don't auto-trade off this"
+- `learn_more` — Wikipedia / Investopedia link for deeper reading
+
+Drawer
+- Right-anchored slide-in (380 px desktop, full-width on mobile).
+- Backdrop + ESC + close-button dismiss.
+- `role="dialog"`, `aria-modal="true"`, focus management returns to the
+  trigger button on close.
+- Auto-attach: any element with `data-explain="<key>"` gets the click
+  handler wired on DOMContentLoaded.
+- `Explainer.iconButton(key, label)` factory renders a circular "?"
+  button with `aria-label`, ready to drop into any template literal.
+
+UI integration (initial set; can grow over time)
+- Stock Analysis Snapshot tab: "?" buttons next to all 14 metric labels
+  (Price, 52W High/Low, % from Low, 5D, RSI, ROC 14/21, MA 20/50/200,
+  Avg Vol, Mcap USD, Trailing P/E).
+- Snapshot Score Overview: "?" buttons next to all 5 score labels
+  (Value, Momentum, Quality, Risk, Data Confidence).
+- Renderer calls `Explainer.attachAll($("snapshot"))` after each render
+  so dynamically-injected buttons stay wired.
+
+Loaded on every page
+- All 11 templates (`screener`, `index`, `watchlists`, `compare`,
+  `events`, `news`, `data_quality`, `sources`, `settings`, `portfolio`,
+  `alerts`) now include `<script src=".../static/explainer.js"></script>`
+  immediately after `ui.js`.
+
+CSS
+- `.explainer-icon` — 16 px circular "?" button with hover + focus-ring.
+- `.explainer-drawer` — slide-in from the right, dark theme, scrollable
+  body, sticky header.
+- `.exp-formula` — monospace inset card for formulas.
+- `.exp-caveats` — yellow-bordered call-out for limitations.
+
+### Tests
+- `tests/test_explainer.py` — 5 cases. Bundle file exists with expected
+  exports, every PRD-required topic key (40+) is in the content
+  registry, every entry has a definition field, all 11 routes load
+  explainer.js, no Jinja-quote artefacts (`\\'static\\'`) in rendered
+  HTML.
+- All **177 tests pass** (was 172 in v0.18.0).
+
 ## [0.18.0] - 2026-05-01
 
 ### Added — News & headline digest (PRD Build Step 10)

@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style](https://img.shields.io/badge/code%20style-pep8-orange.svg)](https://peps.python.org/pep-0008/)
 [![Tests](https://img.shields.io/badge/tests-134%20passing-brightgreen.svg)]()
-[![Version](https://img.shields.io/badge/version-0.18.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.19.0-blue.svg)](CHANGELOG.md)
 
 Free, no-API-key, open-source equity research platform. Discover stocks via a
 filterable Screener, drill into a full 8-tab Stock Analysis page, manage local
@@ -20,6 +20,15 @@ Inspired by TradingView, FINVIZ, Koyfin, Simply Wall St, and StockAnalysis.com
 — but **free / no API keys / no scraping by default**.
 
 ---
+
+## What's new in v0.19.0
+
+**Education drawers** — every metric, score, chart element, and
+workspace concept now has a "?" icon next to it. Click → slide-out
+drawer with plain-English definition, exact formula, how-to-read-it
+bullets, caveats / limitations, and a "Read more" link to
+Wikipedia / Investopedia. 40+ topics covered. Pure rule-based content,
+no LLM. Works on every page.
 
 ## What's new in v0.18.0
 
