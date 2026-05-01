@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Only the latest `main` branch receives security fixes. Pin a tagged release if you need stability. Latest: **v0.22.0**.
+Only the latest `main` branch receives security fixes. Pin a tagged release if you need stability. Latest: **v0.22.1**.
 
 ## Coordinated disclosure
 

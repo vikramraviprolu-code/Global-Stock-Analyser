@@ -153,6 +153,15 @@
 .rec-banner.watch .rec-rating { background: var(--yellow); color: #000; }
 .rec-banner.avoid .rec-rating { background: var(--red); color: #fff; }
 .rec-why { flex: 1; }
+.rec-bucket-chip {
+  display: inline-block; margin-top: 8px;
+  padding: 3px 10px; border-radius: 12px;
+  background: var(--bg); border: 1px solid var(--border);
+  font-size: 11px; color: var(--muted); line-height: 1.6;
+}
+.rec-bucket-chip strong { color: var(--text); font-weight: 600; }
+.rec-bucket-chip a { text-decoration: underline; opacity: 0.85; }
+.rec-bucket-chip a:hover { opacity: 1; }
 
 /* ---------- inherited (results-table styles for peer/peer roster) ---------- */
 

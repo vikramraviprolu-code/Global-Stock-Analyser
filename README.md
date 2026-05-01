@@ -3,8 +3,8 @@
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style](https://img.shields.io/badge/code%20style-pep8-orange.svg)](https://peps.python.org/pep-0008/)
-[![Tests](https://img.shields.io/badge/tests-222%20passing-brightgreen.svg)]()
-[![Version](https://img.shields.io/badge/version-0.22.0-blue.svg)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-224%20passing-brightgreen.svg)]()
+[![Version](https://img.shields.io/badge/version-0.22.1-blue.svg)](CHANGELOG.md)
 
 Free, no-API-key, open-source equity research platform. Discover stocks via a
 filterable Screener, drill into a full 8-tab Stock Analysis page, manage local
@@ -20,6 +20,18 @@ Inspired by TradingView, FINVIZ, Koyfin, Simply Wall St, and StockAnalysis.com
 — but **free / no API keys / no scraping by default**.
 
 ---
+
+## What's new in v0.22.1
+
+**Visible bucket chip on Recommendation tab.**
+
+The Recommendation banner now surfaces the active risk-profile bucket
+inline: a compact chip reading `Tuned for <Bucket> · Buy ≥ M<m>/V<v>/R≤<r>
+· change` sits under the confidence reason. Hover for the full
+threshold dict; the `change` link jumps straight to `/risk-profile`.
+Closes the loop opened in v0.22.0 — users now see at-a-glance which
+threshold set produced the rating, instead of reading the bucket name
+buried in the reasons text.
 
 ## What's new in v0.22.0
 

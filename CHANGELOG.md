@@ -4,6 +4,50 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.22.1] - 2026-05-02
+
+### Added — Bucket chip on Recommendation tab
+
+Visible UI feedback for the v0.22.0 risk-profile wiring. The
+Recommendation banner now renders a compact pill chip underneath the
+confidence reason:
+
+```
+Tuned for Conservative · Buy ≥ M75/V50/R≤30 · change
+```
+
+- Reads `sc.risk_bucket` + `sc.thresholds_used` from the
+  `/api/analyze/v2` payload (already returned by v0.22.0; just no UI
+  surface yet).
+- `title` attribute on the chip exposes the full six-key threshold dict
+  (buy_value / buy_momentum / buy_risk_max / buy_dc_min /
+  avoid_momentum / avoid_risk) on hover.
+- `change` is a deep link to `/risk-profile` so retaking the
+  questionnaire is one click away.
+
+CSS lives in `static/analysis.css` — `.rec-bucket-chip` reuses the
+existing `--bg` / `--border` / `--muted` / `--text` tokens so it
+inherits dark / light themes without extra rules.
+
+### Tests
+
+`tests/test_wireup.py` — 2 new template / CSS presence checks. Total:
+**224 passing** (up from 222).
+
+### Docs
+
+- `README.md` — version badge + test count + new "What's new in
+  v0.22.1" section.
+- `SECURITY.md` — `Latest: **v0.22.1**`.
+
+### Compatibility
+
+- Pure UI patch. No API changes. No localStorage changes. No new deps.
+- Recommendation banner gracefully omits the chip if the server returns
+  a payload without `thresholds_used` (e.g. an older client cache).
+
+---
+
 ## [0.22.0] - 2026-05-02
 
 ### Added — Wire-up release (post-PRD): risk profile, watchlist export, global alerts polling

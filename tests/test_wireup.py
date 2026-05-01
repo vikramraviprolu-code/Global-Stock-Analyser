@@ -190,6 +190,25 @@ def test_watchlists_template_has_export_buttons():
     assert "exportWatchlist" in body, "missing exportWatchlist function"
 
 
+def test_recommendation_renders_bucket_chip():
+    """Index.html must show a chip with the active bucket label + thresholds."""
+    path = os.path.join(os.path.dirname(__file__), "..",
+                        "templates", "index.html")
+    with open(path, "r") as f:
+        body = f.read()
+    assert "rec-bucket-chip" in body, "missing bucket chip class"
+    assert "Tuned for" in body, "missing 'Tuned for' chip text"
+    assert "thresholds_used" in body, "chip must read thresholds_used"
+
+
+def test_analysis_css_has_bucket_chip_style():
+    path = os.path.join(os.path.dirname(__file__), "..",
+                        "static", "analysis.css")
+    with open(path, "r") as f:
+        body = f.read()
+    assert ".rec-bucket-chip" in body, "missing .rec-bucket-chip CSS rule"
+
+
 # ---------- 4. alerts.js loaded on every user-facing template ----------
 
 USER_TEMPLATES = [

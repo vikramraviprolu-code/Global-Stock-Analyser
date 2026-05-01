@@ -545,6 +545,12 @@ function renderRecommendation(i) {
   }
   const ratingCls = sc.final_rating.toLowerCase();
   const list = (arr) => `<ul>${arr.map((x) => `<li>${x}</li>`).join("")}</ul>`;
+  const bucket = sc.risk_bucket || "balanced";
+  const bucketLabel = bucket.charAt(0).toUpperCase() + bucket.slice(1);
+  const th = sc.thresholds_used || {};
+  const thChip = (th.buy_momentum != null)
+    ? `<span class="rec-bucket-chip" title="Buy needs momentum ≥ ${th.buy_momentum}, value ≥ ${th.buy_value}, risk ≤ ${th.buy_risk_max}, data confidence ≥ ${th.buy_dc_min}. Avoid fires when momentum ≤ ${th.avoid_momentum} or risk ≥ ${th.avoid_risk}.">Tuned for <strong>${bucketLabel}</strong> · Buy ≥ M${th.buy_momentum}/V${th.buy_value}/R≤${th.buy_risk_max} · <a href="${window.APP_BASE || ''}/risk-profile" style="color: inherit;">change</a></span>`
+    : "";
   $("recommendation").innerHTML = `
     <div class="card">
       <div class="rec-banner ${ratingCls}">
@@ -552,6 +558,7 @@ function renderRecommendation(i) {
         <div class="rec-why">
           <strong>${sc.confidence_reason}</strong>
           <div class="muted" style="font-size: 12px; margin-top: 4px;">Time horizon: ${sc.time_horizon}</div>
+          ${thChip}
         </div>
       </div>
       <div class="score-grid">

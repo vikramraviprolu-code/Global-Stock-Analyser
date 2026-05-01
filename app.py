@@ -619,7 +619,7 @@ def api_server_info():
     import sys
     cache_stats = _universe_service._enriched_cache.stats()
     return jsonify({
-        "version": "0.22.0",
+        "version": "0.22.1",
         "python": sys.version.split()[0],
         "platform": platform.platform(),
         "url_prefix": URL_PREFIX or "/",
