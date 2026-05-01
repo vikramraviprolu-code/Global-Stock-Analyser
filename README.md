@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style](https://img.shields.io/badge/code%20style-pep8-orange.svg)](https://peps.python.org/pep-0008/)
 [![Tests](https://img.shields.io/badge/tests-134%20passing-brightgreen.svg)]()
-[![Version](https://img.shields.io/badge/version-0.20.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.21.0-blue.svg)](CHANGELOG.md)
 
 Free, no-API-key, open-source equity research platform. Discover stocks via a
 filterable Screener, drill into a full 8-tab Stock Analysis page, manage local
@@ -20,6 +20,23 @@ Inspired by TradingView, FINVIZ, Koyfin, Simply Wall St, and StockAnalysis.com
 — but **free / no API keys / no scraping by default**.
 
 ---
+
+## What's new in v0.21.0
+
+**Polish + perf budget** — last PRD step.
+
+- `static/format.js` — shared formatters (`Fmt.n / pct / mcap / vol /
+  money / cls / flag / sourceBadge / scoreBar / sparkline / timeAgo /
+  date`), eliminates ~500 lines of duplication across templates.
+- `Server-Timing: app;dur=<ms>` header on every response so clients see
+  server-side latency without instrumentation.
+- `/favicon.ico` route serves inline SVG (no extra HTTP request).
+- `prefers-reduced-motion: reduce` CSS guard disables animations when
+  the OS requests reduced motion.
+- New `PERFORMANCE.md` documenting every JS / CSS / API budget + cache
+  TTLs + Server-Timing measurement workflow.
+
+PRD Build Steps 1–13 are now complete.
 
 ## What's new in v0.20.0
 

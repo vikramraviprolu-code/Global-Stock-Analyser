@@ -4,6 +4,55 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.21.0] - 2026-05-02
+
+### Added — Polish + perf budget (PRD Build Step 13, final step)
+
+This is the last PRD build step. v0.21.0 closes out scope by adding
+performance discipline, shared formatters, and end-to-end polish.
+
+**`static/format.js`** — shared formatting helpers exposed on `window.Fmt`.
+Eliminates ~500 lines of duplicated `flag()` / `sourceBadge()` /
+`scoreBar()` / `fmtN()` / `fmtPct()` / `fmtMcap()` / `fmtVol()` /
+`sparkline()` / `timeAgo()` / `cls()` code across 11 templates. Pure
+functions only — no DOM, no I/O.
+
+**Server-Timing header** on every response: `Server-Timing: app;dur=<ms>`.
+Clients (and DevTools → Network → Timing) see server-side latency
+without instrumentation. Implemented via `_record_request_start` +
+`_emit_server_timing` hooks in `app.py`.
+
+**`/favicon.ico`** route serves an inline 64×64 SVG triangle (brand mark)
+with `Cache-Control: max-age=86400`. Loads on every page via
+`<link rel="icon" type="image/svg+xml">`.
+
+**`prefers-reduced-motion: reduce`** CSS guard — disables shimmer / toast
+slide-in / drawer-slide animations when the user's OS-level setting
+requests reduced motion. Drops CPU on slow devices and respects the
+accessibility preference.
+
+**`PERFORMANCE.md`** — authoritative budgets for every JS bundle, every
+CSS bundle, every API endpoint (p50 / p95), every cache TTL, and the
+loopback rendering targets. New file at the repo root.
+
+### Tests
+- `tests/test_polish.py` — 11 cases. Server-Timing header on every
+  response, favicon route + content-type + cache-control, favicon link
+  in every template, format.js exposes 12 helpers and is loaded on
+  every template, screener.css carries the prefers-reduced-motion
+  guard, every JS bundle within its byte budget, vendor JS within its
+  budget, PERFORMANCE.md exists with required sections.
+- All **199 tests pass** (was 190 in v0.20.0).
+
+### PRD scope status
+- Build Steps 1–13 ✅ complete.
+- All seven primary pages live (Screener · Stock Analysis · Watchlists ·
+  Compare · Data Quality · Sources · Settings) plus four PRD-aligned
+  sub-pages (Events · News · Portfolio · Alerts · Risk Profile) plus
+  Privacy & Compliance.
+- 23 exchanges, 14 currencies, 14 indicators, 0 paid APIs, 0 cookies,
+  0 trackers, 0 AI/LLM models.
+
 ## [0.20.0] - 2026-05-01
 
 ### Added — Risk profiler + GDPR + EU AI Act compliance + security hardening

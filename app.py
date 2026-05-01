@@ -79,6 +79,28 @@ def _bump_activity():
 
 
 @app.before_request
+def _record_request_start():
+    """Capture wall-clock start so we can emit Server-Timing on the way out."""
+    from flask import g
+    g._req_started = time.time()
+
+
+@app.after_request
+def _emit_server_timing(resp):
+    """Server-Timing header on every response — gives clients (and DevTools)
+    a transparent view of server-side latency."""
+    from flask import g
+    started = getattr(g, "_req_started", None)
+    if started is not None:
+        elapsed_ms = (time.time() - started) * 1000.0
+        # RFC: name=metric;dur=ms
+        existing = resp.headers.get("Server-Timing", "")
+        timing = f"app;dur={elapsed_ms:.1f}"
+        resp.headers["Server-Timing"] = f"{existing}, {timing}".lstrip(", ")
+    return resp
+
+
+@app.before_request
 def _track_activity():
     _bump_activity()
     global _idle_thread_started
@@ -313,6 +335,23 @@ def risk_profile_page():
 @app.route("/privacy")
 def privacy_page():
     return render_template("privacy.html")
+
+
+@app.route("/favicon.ico")
+def favicon_ico():
+    """Inline SVG favicon — no extra binary download. Triangle = brand mark."""
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+        '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
+        '<stop offset="0" stop-color="#58a6ff"/>'
+        '<stop offset="1" stop-color="#8957e5"/></linearGradient></defs>'
+        '<rect width="64" height="64" rx="12" fill="url(#g)"/>'
+        '<polygon points="32,14 50,46 14,46" fill="#fff"/></svg>'
+    )
+    return svg, 200, {
+        "Content-Type": "image/svg+xml",
+        "Cache-Control": "public, max-age=86400",
+    }
 
 
 @app.route("/.well-known/security.txt")
@@ -580,7 +619,7 @@ def api_server_info():
     import sys
     cache_stats = _universe_service._enriched_cache.stats()
     return jsonify({
-        "version": "0.20.0",
+        "version": "0.21.0",
         "python": sys.version.split()[0],
         "platform": platform.platform(),
         "url_prefix": URL_PREFIX or "/",
