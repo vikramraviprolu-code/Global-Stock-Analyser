@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style](https://img.shields.io/badge/code%20style-pep8-orange.svg)](https://peps.python.org/pep-0008/)
 [![Tests](https://img.shields.io/badge/tests-134%20passing-brightgreen.svg)]()
-[![Version](https://img.shields.io/badge/version-0.17.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.18.0-blue.svg)](CHANGELOG.md)
 
 Free, no-API-key, open-source equity research platform. Discover stocks via a
 filterable Screener, drill into a full 8-tab Stock Analysis page, manage local
@@ -20,6 +20,16 @@ Inspired by TradingView, FINVIZ, Koyfin, Simply Wall St, and StockAnalysis.com
 — but **free / no API keys / no scraping by default**.
 
 ---
+
+## What's new in v0.18.0
+
+**News &amp; headline digest** (`/news`) — recent headlines per ticker via
+yfinance `.news` (free, no key). Rule-based sentiment classification
+(bullish / bearish / neutral via keyword counts) and topic clustering
+(earnings / product / m&a / regulation / executive / macro). Two modes:
+"My Watchlist" digest aggregates across all watchlist tickers, or query a
+single ticker. Headlines are pure rule-based aggregation — explicitly
+labelled as "auto-extracted, not AI" so users know the limit.
 
 ## What's new in v0.17.0
 

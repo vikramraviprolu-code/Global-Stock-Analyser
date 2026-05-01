@@ -4,7 +4,7 @@
   'screener': 'research', 'analysis': 'research', 'compare': 'research',
   'watchlists': 'workspace', 'portfolio': 'workspace', 'alerts': 'workspace',
 
-  'events': 'market',
+  'events': 'market', 'news': 'market',
   'data-quality': 'system', 'sources': 'system', 'settings': 'system',
 } %}
 {% set active_group = GROUP_FOR.get(active_page, '') %}
@@ -44,6 +44,8 @@
         <span class="v2-grp-links">
           <a href="{{ url_for('events_page') }}" role="menuitem"
              class="{{ 'active' if active_page == 'events' else '' }}">Events</a>
+          <a href="{{ url_for('news_page') }}" role="menuitem"
+             class="{{ 'active' if active_page == 'news' else '' }}">News</a>
         </span>
       </li>
       <li class="v2-group {{ 'active' if active_group == 'system' else '' }}" role="none">

@@ -4,6 +4,66 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.18.0] - 2026-05-01
+
+### Added — News & headline digest (PRD Build Step 10)
+
+**`/news` page** — recent headlines with rule-based sentiment + topic
+clustering, transparently labelled as "auto-extracted from headlines, not AI".
+
+**NewsProvider** (`providers/news.py`)
+- yfinance `.news` (free, no API key); 15-min cache.
+- Returns list of `{title, link, publisher, published_at, summary,
+  thumbnail, sentiment, topic, ticker, source_name, source_url}`.
+- `_classify_sentiment()` — keyword-count heuristic returning
+  bullish / bearish / neutral.
+- `_classify_topic()` — first-match dictionary lookup with most-specific
+  topics first (regulation / executive / m_and_a / earnings) to avoid
+  false positives, then macro / product / general fallback.
+- `summarize(items)` — aggregate digest with counts by sentiment + topic
+  and 3 sample headlines per sentiment bucket.
+
+API
+- `GET /api/news?ticker=&max=` — single-ticker headlines + digest.
+  `max` clamped 1–30.
+- `POST /api/news/digest` — batch headlines for ≤30 tickers (e.g.
+  watchlist), returns `{news: {TICKER: items[]}}`.
+
+UI
+- `/news` page with two modes: "My Watchlist" (default) and "Single
+  ticker" lookup.
+- Sentiment hero cards: bullish / bearish / neutral counts + total.
+- Topic-distribution bars (Earnings / Product / M&A / Regulation /
+  Executive / Macro / General).
+- Headline cards with ticker chip → link to Stock Analysis, sentiment
+  badge, topic chip, publisher, time-ago, optional summary.
+- Empty state when watchlist empty or no fresh news.
+- Prominent disclaimer that sentiment + topic are heuristic, not AI.
+
+Sources page
+- `/api/sources/health` now lists `news` provider with explicit
+  "rule-based, not AI" note.
+
+Nav
+- _nav.html: News link added under Market group beside Events.
+  Workspace + Market + System groups all populated.
+
+### Tests
+- `tests/test_news.py` — 18 cases. Sentiment classifier (bullish /
+  bearish / neutral / empty / None), topic classifier (earnings /
+  m_and_a / regulation / executive / general fallback),
+  `_ts_to_iso()` (unix epoch / None / garbage), `summarize()` empty +
+  aggregation, fetch returns empty on yfinance failure, route renders,
+  /api/news invalid / valid / max-clamp, /api/news/digest empty /
+  too-many / per-ticker shape, nav link presence, sources health
+  exposes `news` provider.
+- All **172 tests pass** (was 149 in v0.17.0).
+
+### Smoke test (live data)
+- AAPL: 5 headlines, all bullish, topic split earnings 4 / general 1.
+- Sample: "Apple stock rises after Q2 earnings top estimates on strong
+  iPhone, China sales".
+
 ## [0.17.0] - 2026-05-01
 
 ### Added — Alerts (PRD Build Step 9)

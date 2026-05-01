@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>News — EquityScope</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='screener.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='analysis.css') }}">
+<script src="{{ url_for('static', filename='ui.js') }}"></script>
+<script src="{{ url_for('static', filename='watchlist.js') }}"></script>
+</head>
+<body>
+{% set active_page = 'news' %}
+{% include '_nav.html' %}
+
+<main class="screener-shell" id="main" style="grid-template-columns: 1fr;">
+  <section class="results-panel">
+    <header class="results-header">
+      <div>
+        <h1>News &amp; Headline Digest</h1>
+        <p class="muted">Recent headlines from yfinance — free public source. Sentiment + topic clustering is rule-based keyword matching, <strong>not</strong> AI.</p>
+      </div>
+      <div class="rh-toolbar">
+        <button class="vt-btn active" data-source="watchlist" aria-label="Show watchlist news">My Watchlist</button>
+        <button class="vt-btn" data-source="ticker" aria-label="Show news for a single ticker">Single ticker</button>
+      </div>
+    </header>
+
+    <div id="ticker-input" class="hidden" style="margin-bottom: 12px;">
+      <div class="compare-input">
+        <input id="news-ticker" placeholder="AAPL" maxlength="20">
+        <button id="news-go" class="btn-primary">Load headlines</button>
+      </div>
+    </div>
+
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <div style="margin-top: 12px;">Fetching headlines…</div>
+    </div>
+
+    <div id="error-box" class="error hidden"></div>
+    <div id="empty-box" class="empty-state hidden" role="status"></div>
+
+    <div id="digest-card" class="card hidden">
+      <h2>Headline Digest</h2>
+      <p class="muted" style="font-size: 12px;">
+        ⚠ Sentiment buckets are derived by counting positive/negative keywords
+        in each headline. Topic clustering uses a fixed keyword dictionary.
+        This is <strong>not AI inference</strong> — it's a transparent rule-based
+        aggregation. Read the actual headlines below for context.
+      </p>
+      <div id="digest-stats" class="dq-stats"></div>
+      <div id="digest-topics" class="news-topic-bars"></div>
+    </div>
+
+    <div id="news-list" class="news-list"></div>
+
+    <p class="disclaimer">
+      Headlines are best-effort from yfinance and may be outdated, biased, or incomplete.
+      Auto-extracted sentiment / topic labels are heuristic only — never use as a
+      buy / sell signal in isolation. <strong>Not financial advice.</strong>
+    </p>
+  </section>
+</main>
+
+<script>
+const APP_BASE = {{ request.script_root|tojson }};
+const $ = (id) => document.getElementById(id);
+
+const fmtTs = (ts) => {
+  if (!ts) return "—";
+  try {
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return ts;
+    const diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60) return "just now";
+    if (diff < 3600) return Math.floor(diff/60) + "m ago";
+    if (diff < 86400) return Math.floor(diff/3600) + "h ago";
+    if (diff < 604800) return Math.floor(diff/86400) + "d ago";
+    return d.toLocaleDateString();
+  } catch (e) { return ts; }
+};
+
+const sentimentBadge = (s) => {
+  const cls = ({bullish:"green", bearish:"red", neutral:"muted"})[s] || "muted";
+  const icon = ({bullish:"▲", bearish:"▼", neutral:"●"})[s] || "?";
+  return `<span class="news-sent ${cls}" title="Auto-extracted from headline keywords">${icon} ${s}</span>`;
+};
+
+const topicLabel = (t) => ({
+  earnings: "📊 Earnings",
+  product: "🚀 Product",
+  m_and_a: "🤝 M&A",
+  regulation: "⚖ Regulation",
+  executive: "👤 Executive",
+  macro: "🌐 Macro",
+  general: "📰 General",
+}[t] || t);
+
+let mode = "watchlist";
+document.querySelectorAll(".vt-btn").forEach((b) =>
+  b.onclick = () => {
+    document.querySelectorAll(".vt-btn").forEach((x) => x.classList.remove("active"));
+    b.classList.add("active");
+    mode = b.dataset.source;
+    $("ticker-input").classList.toggle("hidden", mode !== "ticker");
+    if (mode === "watchlist") loadWatchlist();
+  }
+);
+
+$("news-go").onclick = () => {
+  const t = $("news-ticker").value.trim().toUpperCase();
+  if (!t) return;
+  loadSingle(t);
+};
+$("news-ticker").addEventListener("keydown", (e) => { if (e.key === "Enter") $("news-go").click(); });
+
+async function loadSingle(ticker) {
+  $("error-box").classList.add("hidden");
+  $("empty-box").classList.add("hidden");
+  $("digest-card").classList.add("hidden");
+  $("news-list").innerHTML = "";
+  $("loading").classList.remove("hidden");
+  try {
+    const r = await (window.fetchWithRetry || fetch)(
+      APP_BASE + "/api/news?ticker=" + encodeURIComponent(ticker) + "&max=20",
+      { timeout: 30000 }
+    );
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    if (!d.items || !d.items.length) {
+      $("empty-box").innerHTML = UI.emptyState({
+        icon: "📰",
+        title: `No headlines for ${ticker}`,
+        description: d.warning || "yfinance returned no recent news for this ticker.",
+      });
+      $("empty-box").classList.remove("hidden");
+      return;
+    }
+    renderDigest(d.digest, ticker);
+    renderItems(d.items);
+  } catch (e) {
+    $("error-box").textContent = "❌ " + e.message;
+    $("error-box").classList.remove("hidden");
+  } finally {
+    $("loading").classList.add("hidden");
+  }
+}
+
+async function loadWatchlist() {
+  $("error-box").classList.add("hidden");
+  $("empty-box").classList.add("hidden");
+  $("digest-card").classList.add("hidden");
+  $("news-list").innerHTML = "";
+  const tickers = window.Watchlists ? [...Watchlists.allTickers()].slice(0, 30) : [];
+  if (!tickers.length) {
+    $("empty-box").innerHTML = UI.emptyState({
+      icon: "📭",
+      title: "Watchlist empty",
+      description: "Add tickers via the Screener ⭐ buttons or the Watchlists page, then return here.",
+      linkText: "Open Screener",
+      linkHref: APP_BASE + "/screener",
+    });
+    $("empty-box").classList.remove("hidden");
+    return;
+  }
+  $("loading").classList.remove("hidden");
+  try {
+    const r = await (window.fetchWithRetry || fetch)(APP_BASE + "/api/news/digest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tickers, max_per_ticker: 6 }),
+      timeout: 30000,
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+
+    const allItems = [];
+    Object.entries(d.news || {}).forEach(([t, items]) => {
+      (items || []).forEach((it) => allItems.push(it));
+    });
+    if (!allItems.length) {
+      $("empty-box").innerHTML = UI.emptyState({
+        icon: "📭",
+        title: "No fresh headlines",
+        description: `No news found from yfinance for any of your ${tickers.length} watchlist ticker(s) right now.`,
+      });
+      $("empty-box").classList.remove("hidden");
+      return;
+    }
+    // Sort newest first
+    allItems.sort((a, b) => (b.published_at || "").localeCompare(a.published_at || ""));
+    // Build aggregate digest
+    const digest = aggregateDigest(allItems);
+    renderDigest(digest, `${tickers.length} watchlist ticker(s)`);
+    renderItems(allItems.slice(0, 50));
+  } catch (e) {
+    $("error-box").textContent = "❌ " + e.message;
+    $("error-box").classList.remove("hidden");
+  } finally {
+    $("loading").classList.add("hidden");
+  }
+}
+
+function aggregateDigest(items) {
+  const by_sent = { bullish: 0, bearish: 0, neutral: 0 };
+  const by_topic = {};
+  items.forEach((it) => {
+    const s = it.sentiment || "neutral";
+    by_sent[s] = (by_sent[s] || 0) + 1;
+    const t = it.topic || "general";
+    by_topic[t] = (by_topic[t] || 0) + 1;
+  });
+  return { total: items.length, by_sentiment: by_sent, by_topic };
+}
+
+function renderDigest(digest, label) {
+  const total = digest.total;
+  if (!total) {
+    $("digest-card").classList.add("hidden");
+    return;
+  }
+  $("digest-card").classList.remove("hidden");
+  const pct = (n) => total ? ((n/total)*100).toFixed(0) + "%" : "0%";
+  const fc = digest.by_sentiment;
+  $("digest-stats").innerHTML = `
+    <div class="dq-stat good"><div class="dq-stat-num">${fc.bullish}</div>
+      <div class="dq-stat-label">▲ Bullish (${pct(fc.bullish)})</div></div>
+    <div class="dq-stat danger"><div class="dq-stat-num">${fc.bearish}</div>
+      <div class="dq-stat-label">▼ Bearish (${pct(fc.bearish)})</div></div>
+    <div class="dq-stat"><div class="dq-stat-num">${fc.neutral}</div>
+      <div class="dq-stat-label">● Neutral (${pct(fc.neutral)})</div></div>
+    <div class="dq-stat"><div class="dq-stat-num">${total}</div>
+      <div class="dq-stat-label">${label}</div></div>
+  `;
+  // Topic bars
+  const topics = Object.entries(digest.by_topic || {})
+    .sort((a, b) => b[1] - a[1]);
+  $("digest-topics").innerHTML = topics.map(([k, n]) => `
+    <div class="alloc-row">
+      <div class="alloc-label">${topicLabel(k)}</div>
+      <div class="alloc-bar"><div class="alloc-fill" style="width:${Math.max(2,(n/total)*100).toFixed(1)}%"></div></div>
+      <div class="alloc-val">${n} (${pct(n)})</div>
+    </div>`).join("");
+}
+
+function renderItems(items) {
+  $("news-list").innerHTML = items.map((it) => `
+    <article class="news-item">
+      <div class="news-meta">
+        <a class="news-ticker" href="${APP_BASE}/app?ticker=${encodeURIComponent(it.ticker)}">${it.ticker}</a>
+        <span class="news-publisher">${it.publisher || "—"}</span>
+        <span class="news-time">${fmtTs(it.published_at)}</span>
+        ${sentimentBadge(it.sentiment)}
+        <span class="news-topic">${topicLabel(it.topic)}</span>
+      </div>
+      <a class="news-title" href="${it.link || '#'}" target="_blank" rel="noopener">${it.title || "(no title)"}</a>
+      ${it.summary ? `<p class="news-summary">${it.summary}</p>` : ""}
+    </article>`).join("");
+}
+
+if (mode === "watchlist") loadWatchlist();
+</script>
+</body>
+</html>

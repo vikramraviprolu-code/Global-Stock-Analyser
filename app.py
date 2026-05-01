@@ -300,6 +300,11 @@ def alerts_page():
     return render_template("alerts.html")
 
 
+@app.route("/news")
+def news_page():
+    return render_template("news.html")
+
+
 # ----- v2 API ----------------------------------------------------------------
 
 @app.route("/api/screener/presets")
@@ -552,7 +557,7 @@ def api_server_info():
     import sys
     cache_stats = _universe_service._enriched_cache.stats()
     return jsonify({
-        "version": "0.17.0",
+        "version": "0.18.0",
         "python": sys.version.split()[0],
         "platform": platform.platform(),
         "url_prefix": URL_PREFIX or "/",
@@ -576,6 +581,68 @@ def api_clear_cache():
         return jsonify({"error": "Cross-origin clear-cache blocked."}), 403
     _universe_service._enriched_cache.clear()
     return jsonify({"cleared": True})
+
+
+@app.route("/api/news")
+def api_news():
+    """Headlines for a single ticker. Returns list + summary digest."""
+    ticker = (request.args.get("ticker") or "").upper().strip()
+    if not ticker or not TICKER_BATCH_RE.match(ticker):
+        return jsonify({"error": "Invalid ticker."}), 400
+    try:
+        max_items = int(request.args.get("max", "15"))
+    except ValueError:
+        max_items = 15
+    max_items = max(1, min(max_items, 30))
+
+    items = _universe_service.news.fetch(ticker, max_items=max_items)
+    digest = _universe_service.news.summarize(items)
+    return jsonify(_scrub_nan({
+        "ticker": ticker, "items": items, "digest": digest,
+        "warning": ("No headlines available from free public sources for this ticker."
+                    if not items else None),
+    }))
+
+
+@app.route("/api/news/digest", methods=["POST"])
+def api_news_digest():
+    """Batch headlines for a list of tickers (e.g. user's watchlist)."""
+    data = request.get_json(silent=True) or {}
+    tickers = data.get("tickers") or []
+    if not isinstance(tickers, list) or not tickers:
+        return jsonify({"error": "tickers (list) required."}), 400
+    if len(tickers) > 30:
+        return jsonify({"error": "Max 30 tickers per batch."}), 400
+    try:
+        max_items = int(data.get("max_per_ticker", 8))
+    except (TypeError, ValueError):
+        max_items = 8
+    max_items = max(1, min(max_items, 20))
+
+    cleaned = []
+    for t in tickers:
+        if not isinstance(t, str):
+            continue
+        t = t.upper().strip()
+        if TICKER_BATCH_RE.match(t):
+            cleaned.append(t)
+    if not cleaned:
+        return jsonify({"error": "No valid tickers."}), 400
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    results = {}
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        futures = {
+            ex.submit(_universe_service.news.fetch, t, max_items): t
+            for t in cleaned
+        }
+        for fut in as_completed(futures):
+            t = futures[fut]
+            try:
+                results[t] = fut.result() or []
+            except Exception:
+                results[t] = []
+    return jsonify(_scrub_nan({"news": results}))
 
 
 CCY_RE = re.compile(r"^[A-Z]{3}$")
@@ -657,6 +724,12 @@ def api_sources_health():
                 "type": "free / best-effort",
                 "url": "https://finance.yahoo.com",
                 "notes": "Earnings, dividend, ex-dividend, split dates. Missing dates surface as freshness=unavailable; never fabricated.",
+            },
+            "news": {
+                "name": "yfinance (.news)",
+                "type": "free / best-effort",
+                "url": "https://finance.yahoo.com",
+                "notes": "Recent headlines per ticker. Sentiment + topic classification is rule-based (keyword matching) — not AI; clearly labelled as 'auto-extracted' in the UI.",
             },
             "fx": {
                 "name": "yfinance currency pairs",

@@ -27,6 +27,7 @@ from providers.historical import (
 from providers.fundamentals import YFinanceFundamentals
 from providers.mock import MockProvider
 from providers.events import EventsProvider
+from providers.news import NewsProvider
 
 UNIVERSE_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -41,6 +42,7 @@ class UniverseService:
         fundamentals: Optional[YFinanceFundamentals] = None,
         mock: Optional[MockProvider] = None,
         events: Optional[EventsProvider] = None,
+        news: Optional[NewsProvider] = None,
         ttl_seconds: int = 1800,
     ):
         cache = TTLCache(default_ttl=ttl_seconds)
@@ -48,6 +50,7 @@ class UniverseService:
         self.fundamentals = fundamentals or YFinanceFundamentals(cache=cache)
         self.mock = mock or MockProvider()
         self.events = events or EventsProvider()
+        self.news = news or NewsProvider()
         self._enriched_cache = TTLCache(default_ttl=ttl_seconds)
         self._rows: Optional[List[dict]] = None
         self._row_lock = threading.Lock()
