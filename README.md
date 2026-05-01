@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style](https://img.shields.io/badge/code%20style-pep8-orange.svg)](https://peps.python.org/pep-0008/)
 [![Tests](https://img.shields.io/badge/tests-134%20passing-brightgreen.svg)]()
-[![Version](https://img.shields.io/badge/version-0.16.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.17.0-blue.svg)](CHANGELOG.md)
 
 Free, no-API-key, open-source equity research platform. Discover stocks via a
 filterable Screener, drill into a full 8-tab Stock Analysis page, manage local
@@ -20,6 +20,14 @@ Inspired by TradingView, FINVIZ, Koyfin, Simply Wall St, and StockAnalysis.com
 — but **free / no API keys / no scraping by default**.
 
 ---
+
+## What's new in v0.17.0
+
+**Alerts** — browser-local rule engine with 11 condition kinds
+(price ≥/≤, 5D move, RSI bands, MA crossovers, 52W extremes), auto-poll
+(1–60 min), in-app toasts + opt-in desktop notifications, snooze /
+reactivate / dismiss states, persistent trigger log. Zero server-side
+state — alerts live in your browser only.
 
 ## What's new in v0.16.0
 

@@ -295,6 +295,11 @@ def portfolio_page():
     return render_template("portfolio.html")
 
 
+@app.route("/alerts")
+def alerts_page():
+    return render_template("alerts.html")
+
+
 # ----- v2 API ----------------------------------------------------------------
 
 @app.route("/api/screener/presets")
@@ -547,7 +552,7 @@ def api_server_info():
     import sys
     cache_stats = _universe_service._enriched_cache.stats()
     return jsonify({
-        "version": "0.16.0",
+        "version": "0.17.0",
         "python": sys.version.split()[0],
         "platform": platform.platform(),
         "url_prefix": URL_PREFIX or "/",

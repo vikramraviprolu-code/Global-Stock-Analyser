@@ -4,6 +4,66 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.17.0] - 2026-05-01
+
+### Added — Alerts (PRD Build Step 9)
+
+**`/alerts` page** — browser-local alert engine with auto-poll, OS
+notifications, and a triggered log. Zero server-side persistence.
+
+Storage (`static/alerts.js`)
+- localStorage key `equityscope.alerts`.
+- Schema: `{version, pollMinutes, desktopNotifications, alerts[], log[]}`.
+- Alert shape: `{id, ticker, kind, threshold, status, createdAt,
+  triggeredAt, snoozedUntil, dismissedAt, lastValue, notes}`.
+- `Alerts.add/update/remove/snooze/dismiss/reactivate/list/log/
+  pollOnce/evaluateAll/notifyFire/requestDesktopPermission`.
+- Log capped at 200 entries to prevent runaway storage.
+
+11 alert kinds
+- `price_above`, `price_below` — absolute thresholds in local ccy
+- `pct_change_5d` — absolute 5-day move ≥ X%
+- `rsi_above`, `rsi_below` — RSI bands
+- `cross_ma50_up`, `cross_ma50_down`, `cross_ma200_up`, `cross_ma200_down`
+  — moving-average crossovers
+- `near_52w_low`, `near_52w_high` — distance-from-extreme thresholds
+
+Background polling
+- Auto-runs while any EquityScope tab is open (`alerts.js` is loaded by
+  the alerts page; can be added to other pages later).
+- Default 5 min interval; user-selectable 1 / 5 / 15 / 30 / 60 min.
+- Pauses while document is hidden (`document.hidden`); re-runs on focus.
+- Batches `/api/metrics` requests at 12 tickers per chunk.
+- Triggered alerts auto-pause (status=triggered) until user reactivates,
+  preventing notification spam.
+
+Notifications
+- In-app toast on every fire (via shared `UI.toast`).
+- Optional desktop notifications via `Notification` API (opt-in checkbox
+  requests permission on first enable; gracefully degrades if denied).
+- `equityscope:alerts-fired` window event so an open Alerts tab
+  re-renders without reload.
+
+UI
+- Add-alert form (ticker / kind / threshold / notes) with kind-aware
+  threshold unit hint and auto-disable for thresholdless cross alerts.
+- Status badges: Active / Triggered / Snoozed / Dismissed.
+- Inline actions per row: Snooze 1h · Reactivate · Delete.
+- Trigger log table (newest first, 50 most recent).
+- Empty state when no alerts.
+- All 5 routes (`/screener`, `/app`, `/portfolio`, `/watchlists`,
+  `/alerts`) now expose Alerts in the Workspace nav group.
+
+Backend
+- New `/alerts` route. No new API endpoints — eval reuses `/api/metrics`
+  for live data. Alert state never leaves the browser.
+
+### Tests
+- `tests/test_alerts.py` — 5 cases. Route renders, all 11 alert kinds
+  exposed in the form, polling controls present, disclaimer present,
+  nav link active.
+- All **149 tests pass** (was 144 in v0.16.0).
+
 ## [0.16.0] - 2026-05-01
 
 ### Added — Portfolio (PRD Build Step 8)

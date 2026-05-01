@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Alerts — EquityScope</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='screener.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='analysis.css') }}">
+<script src="{{ url_for('static', filename='ui.js') }}"></script>
+<script src="{{ url_for('static', filename='alerts.js') }}"></script>
+</head>
+<body>
+{% set active_page = 'alerts' %}
+{% include '_nav.html' %}
+
+<main class="screener-shell" id="main" style="grid-template-columns: 1fr;">
+  <section class="results-panel">
+    <header class="results-header">
+      <div>
+        <h1>Alerts</h1>
+        <p class="muted" id="al-summary">Loading…</p>
+      </div>
+      <div class="rh-toolbar">
+        <label class="setting-check" style="font-size: 12px;">
+          Poll every
+          <select id="al-poll-min" aria-label="Polling frequency in minutes">
+            <option value="1">1 min</option>
+            <option value="5" selected>5 min</option>
+            <option value="15">15 min</option>
+            <option value="30">30 min</option>
+            <option value="60">60 min</option>
+          </select>
+        </label>
+        <label class="setting-check" style="font-size: 12px;">
+          <input id="al-desktop" type="checkbox"> Desktop notifications
+        </label>
+        <button class="btn-ghost" id="al-test-poll" aria-label="Run a manual evaluation now">↻ Run now</button>
+      </div>
+    </header>
+
+    <div class="card">
+      <h2>Add Alert</h2>
+      <form id="al-add-form" class="al-add-grid" autocomplete="off">
+        <label>Ticker
+          <input id="al-ticker" type="text" placeholder="AAPL" required maxlength="20">
+        </label>
+        <label>Condition
+          <select id="al-kind" required>
+            <option value="price_above">Price ≥</option>
+            <option value="price_below">Price ≤</option>
+            <option value="pct_change_5d">5D move ≥ (%)</option>
+            <option value="rsi_above">RSI ≥</option>
+            <option value="rsi_below">RSI ≤</option>
+            <option value="cross_ma200_up">Price ≥ 200D MA</option>
+            <option value="cross_ma200_down">Price ≤ 200D MA</option>
+            <option value="cross_ma50_up">Price ≥ 50D MA</option>
+            <option value="cross_ma50_down">Price ≤ 50D MA</option>
+            <option value="near_52w_low">≤ X% from 52W low</option>
+            <option value="near_52w_high">≤ X% from 52W high</option>
+          </select>
+        </label>
+        <label>Threshold <span id="al-threshold-unit" class="muted"></span>
+          <input id="al-threshold" type="number" step="0.01">
+        </label>
+        <label>Notes
+          <input id="al-notes" type="text" maxlength="200" placeholder="optional">
+        </label>
+        <button type="submit" class="btn-primary">+ Add alert</button>
+      </form>
+      <p class="muted" style="font-size: 11px; margin-top: 8px;">
+        Alerts are stored in this browser only. Background polling runs while
+        any EquityScope tab is open. Triggered alerts auto-pause until you
+        reactivate them.
+      </p>
+    </div>
+
+    <div id="al-empty" class="empty-state hidden" role="status">
+      <div class="empty-state-icon" aria-hidden="true">🔔</div>
+      <div class="empty-state-title">No alerts yet</div>
+      <div class="empty-state-desc">Add a price / RSI / MA-cross / 52W-distance condition above. Triggered hits surface as toasts (and desktop notifications if enabled).</div>
+    </div>
+
+    <div id="al-table-wrap" class="hidden">
+      <h2>Active &amp; Recent Alerts</h2>
+      <div style="overflow-x: auto;">
+      <table class="results-table">
+        <thead><tr>
+          <th>Status</th>
+          <th>Ticker</th>
+          <th>Condition</th>
+          <th class="num">Threshold</th>
+          <th>Last value</th>
+          <th>Created</th>
+          <th>Triggered</th>
+          <th>Notes</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="al-tbody"></tbody>
+      </table>
+      </div>
+    </div>
+
+    <div id="al-log-wrap" class="hidden">
+      <h2 style="margin-top: 24px;">Trigger Log</h2>
+      <div style="overflow-x: auto;">
+      <table class="results-table">
+        <thead><tr>
+          <th>When</th><th>Ticker</th><th>Condition</th><th>Value</th><th>Message</th>
+        </tr></thead>
+        <tbody id="al-log-tbody"></tbody>
+      </table>
+      </div>
+    </div>
+
+    <p class="disclaimer">
+      Alerts are computed client-side against free / public data that may be
+      delayed, incomplete, or unavailable. Browser polling is best-effort —
+      not for time-critical decisions. <strong>Not financial advice.</strong>
+    </p>
+  </section>
+</main>
+
+<script>
+window.APP_BASE = {{ request.script_root|tojson }};
+const APP_BASE = window.APP_BASE;
+const $ = (id) => document.getElementById(id);
+
+const fmtN = (n, dec = 2) => (n == null ? "—" : Number(n).toFixed(dec));
+const flag = (c) => ({"USA":"🇺🇸","India":"🇮🇳","UK":"🇬🇧","Germany":"🇩🇪","France":"🇫🇷","Netherlands":"🇳🇱","Switzerland":"🇨🇭","Italy":"🇮🇹","Spain":"🇪🇸","Sweden":"🇸🇪","Finland":"🇫🇮","Denmark":"🇩🇰","Norway":"🇳🇴","Japan":"🇯🇵","Hong Kong":"🇭🇰","South Korea":"🇰🇷","Taiwan":"🇹🇼","Singapore":"🇸🇬","Australia":"🇦🇺","China":"🇨🇳","Canada":"🇨🇦"}[c] || "🌐");
+
+// ---------- bindings ----------
+$("al-poll-min").value = String(Alerts.pollMinutes());
+$("al-poll-min").onchange = () => {
+  Alerts.setPollMinutes($("al-poll-min").value);
+  UI.toast(`Poll interval: ${Alerts.pollMinutes()} min`, { type: "success" });
+};
+
+$("al-desktop").checked = Alerts.desktopEnabled();
+$("al-desktop").onchange = async () => {
+  if ($("al-desktop").checked) {
+    const perm = await Alerts.requestDesktopPermission();
+    if (perm !== "granted") {
+      UI.toast("Desktop notifications not granted by the browser.", { type: "warning" });
+      $("al-desktop").checked = false;
+      return;
+    }
+    Alerts.setDesktopEnabled(true);
+    UI.toast("Desktop notifications enabled.", { type: "success" });
+  } else {
+    Alerts.setDesktopEnabled(false);
+  }
+};
+
+$("al-test-poll").onclick = async () => {
+  UI.toast("Polling now…", { type: "info", duration: 1500 });
+  await Alerts.pollOnce();
+  render();
+};
+
+const KINDS = Alerts.KINDS;
+$("al-kind").onchange = () => {
+  const def = KINDS[$("al-kind").value];
+  $("al-threshold-unit").textContent = def?.unit || "";
+  $("al-threshold").disabled = def?.threshold !== "number";
+  if (def?.threshold !== "number") $("al-threshold").value = "";
+};
+$("al-kind").dispatchEvent(new Event("change"));
+
+$("al-add-form").onsubmit = (e) => {
+  e.preventDefault();
+  const a = Alerts.add({
+    ticker: $("al-ticker").value,
+    kind: $("al-kind").value,
+    threshold: $("al-threshold").value,
+    notes: $("al-notes").value,
+  });
+  if (!a) {
+    UI.toast("Could not add — check ticker + threshold.", { type: "error" });
+    return;
+  }
+  UI.toast(`Alert added for ${a.ticker}`, { type: "success" });
+  e.target.reset();
+  $("al-kind").dispatchEvent(new Event("change"));
+  render();
+};
+
+window.addEventListener("equityscope:alerts-fired", () => render());
+
+// ---------- render ----------
+function render() {
+  const list = Alerts.list();
+  const log = Alerts.log();
+  $("al-summary").textContent =
+    `${list.filter((a) => a.status === "active").length} active · ` +
+    `${list.filter((a) => a.status === "triggered").length} triggered · ` +
+    `${list.filter((a) => a.status === "snoozed").length} snoozed · ` +
+    `${list.filter((a) => a.status === "dismissed").length} dismissed`;
+
+  $("al-empty").classList.toggle("hidden", list.length > 0);
+  $("al-table-wrap").classList.toggle("hidden", list.length === 0);
+  $("al-log-wrap").classList.toggle("hidden", log.length === 0);
+
+  if (!list.length) return;
+
+  const fmtTs = (ts) => ts ? new Date(ts).toLocaleString() : "—";
+  $("al-tbody").innerHTML = list.map((a) => {
+    const def = KINDS[a.kind] || { label: a.kind, unit: "" };
+    const statusBadge = ({
+      active:    '<span class="src-badge cached">Active</span>',
+      triggered: '<span class="src-badge mock">Triggered</span>',
+      snoozed:   '<span class="src-badge previous-close">Snoozed</span>',
+      dismissed: '<span class="src-badge unavailable">Dismissed</span>',
+    })[a.status] || a.status;
+    const reactivateBtn = (a.status === "triggered" || a.status === "dismissed")
+      ? `<button class="btn-ghost mini" data-react="${a.id}" aria-label="Reactivate alert">↻</button>` : "";
+    const snoozeBtn = (a.status === "active")
+      ? `<button class="btn-ghost mini" data-snooze="${a.id}" aria-label="Snooze 60 minutes">😴 1h</button>` : "";
+    const lastVal = (a.lastValue != null) ? Number(a.lastValue).toFixed(2) : "—";
+    const thresholdCell = a.threshold != null ? `${a.threshold} ${def.unit || ""}` : "—";
+    return `<tr>
+      <td>${statusBadge}</td>
+      <td><a href="${APP_BASE}/app?ticker=${encodeURIComponent(a.ticker)}"><strong>${a.ticker}</strong></a></td>
+      <td>${def.label}</td>
+      <td class="num">${thresholdCell}</td>
+      <td>${lastVal}</td>
+      <td class="muted">${fmtTs(a.createdAt)}</td>
+      <td class="muted">${fmtTs(a.triggeredAt)}</td>
+      <td>${a.notes || ""}</td>
+      <td>
+        ${snoozeBtn}
+        ${reactivateBtn}
+        <button class="btn-ghost mini" data-del="${a.id}" aria-label="Delete alert">✕</button>
+      </td>
+    </tr>`;
+  }).join("");
+
+  $("al-tbody").querySelectorAll("[data-del]").forEach((b) =>
+    b.onclick = () => {
+      if (!confirm("Delete this alert?")) return;
+      Alerts.remove(b.dataset.del);
+      render();
+    }
+  );
+  $("al-tbody").querySelectorAll("[data-react]").forEach((b) =>
+    b.onclick = () => { Alerts.reactivate(b.dataset.react); UI.toast("Reactivated.", { type: "success" }); render(); }
+  );
+  $("al-tbody").querySelectorAll("[data-snooze]").forEach((b) =>
+    b.onclick = () => { Alerts.snooze(b.dataset.snooze, 60); UI.toast("Snoozed 1 hour.", { type: "success" }); render(); }
+  );
+
+  // Log
+  $("al-log-tbody").innerHTML = log.slice(0, 50).map((e) => `
+    <tr>
+      <td class="muted">${fmtTs(e.ts)}</td>
+      <td><strong>${e.ticker}</strong></td>
+      <td>${(KINDS[e.kind]?.label) || e.kind}</td>
+      <td class="num">${fmtN(e.value)}</td>
+      <td>${e.message || ""}</td>
+    </tr>`).join("");
+}
+
+render();
+</script>
+</body>
+</html>

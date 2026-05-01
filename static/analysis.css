@@ -280,6 +280,26 @@
 }
 .alloc-val { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
 
+/* ---------- alerts ---------- */
+.al-add-grid {
+  display: grid;
+  grid-template-columns: 0.7fr 1.2fr 0.8fr 1.2fr auto;
+  gap: 10px; align-items: end;
+}
+.al-add-grid label {
+  display: flex; flex-direction: column;
+  font-size: 11px; color: var(--muted); gap: 3px;
+}
+.al-add-grid input, .al-add-grid select {
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 6px 8px; font-family: inherit; font-size: 13px;
+}
+.al-add-grid input:focus-visible, .al-add-grid select:focus-visible {
+  outline: 2px solid var(--accent);
+}
+.al-add-grid button[type="submit"] { white-space: nowrap; height: 32px; }
+
 /* responsive */
 @media (max-width: 900px) {
   .chart-canvas { height: 400px; }

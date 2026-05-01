@@ -3,6 +3,7 @@
 {% set GROUP_FOR = {
   'screener': 'research', 'analysis': 'research', 'compare': 'research',
   'watchlists': 'workspace', 'portfolio': 'workspace', 'alerts': 'workspace',
+
   'events': 'market',
   'data-quality': 'system', 'sources': 'system', 'settings': 'system',
 } %}
@@ -34,8 +35,8 @@
              class="{{ 'active' if active_page == 'watchlists' else '' }}">Watchlists</a>
           <a href="{{ url_for('portfolio_page') }}" role="menuitem"
              class="{{ 'active' if active_page == 'portfolio' else '' }}">Portfolio</a>
-          <a href="#" class="disabled" role="menuitem" aria-disabled="true"
-             title="Alerts coming in v0.17.0">Alerts</a>
+          <a href="{{ url_for('alerts_page') }}" role="menuitem"
+             class="{{ 'active' if active_page == 'alerts' else '' }}">Alerts</a>
         </span>
       </li>
       <li class="v2-group {{ 'active' if active_group == 'market' else '' }}" role="none">
