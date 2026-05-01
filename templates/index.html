@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='screener.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='analysis.css') }}">
+<script src="{{ url_for('static', filename='ui.js') }}"></script>
 <script src="{{ url_for('static', filename='watchlist.js') }}"></script>
 <script src="{{ url_for('static', filename='vendor/lightweight-charts.standalone.production.js') }}"></script>
 </head>
@@ -14,7 +15,7 @@
 {% set active_page = 'analysis' %}
 {% include '_nav.html' %}
 
-<div class="analysis-shell">
+<main class="analysis-shell" id="main">
   <div class="search-bar">
     <input id="ticker" type="text" placeholder="Enter ticker or company (AAPL, BMW.DE, Reliance, Toyota…)" autocomplete="off">
     <button id="analyze-btn" class="btn-primary">Analyze</button>
@@ -74,7 +75,7 @@
       This analysis is for informational purposes only and is not financial advice.
     </p>
   </div>
-</div>
+</main>
 
 <script>
 const APP_BASE = {{ request.script_root|tojson }};
@@ -140,7 +141,7 @@ document.addEventListener("click", (e) => {
 
 async function doAC(q) {
   try {
-    const r = await fetch(APP_BASE + "/api/search?q=" + encodeURIComponent(q));
+    const r = await (window.fetchWithRetry || fetch)(APP_BASE + "/api/search?q=" + encodeURIComponent(q));
     const d = await r.json();
     if (!d.candidates || !d.candidates.length) { hideAC(); return; }
     showAC(d.candidates.slice(0, 8));
@@ -169,7 +170,7 @@ async function handleAnalyze() {
   const q = $("ticker").value.trim();
   if (!q) return;
   try {
-    const r = await fetch(APP_BASE + "/api/search?q=" + encodeURIComponent(q));
+    const r = await (window.fetchWithRetry || fetch)(APP_BASE + "/api/search?q=" + encodeURIComponent(q));
     const d = await r.json();
     if (!d.candidates || !d.candidates.length) {
       runAnalyze(q.toUpperCase());
@@ -214,7 +215,7 @@ async function runAnalyze(ticker) {
   $("results").classList.add("hidden");
   $("loading").classList.remove("hidden");
   try {
-    const r = await fetch(APP_BASE + "/api/analyze/v2", {
+    const r = await (window.fetchWithRetry || fetch)(APP_BASE + "/api/analyze/v2", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ticker }),
@@ -622,7 +623,7 @@ async function buildChart() {
   $("chart-canvas").innerHTML = '<div class="loading"><div class="spinner"></div><div style="margin-top: 12px;">Loading OHLCV…</div></div>';
 
   try {
-    const r = await fetch(APP_BASE + "/api/ohlcv?ticker=" + encodeURIComponent(ticker) + "&days=2500");
+    const r = await (window.fetchWithRetry || fetch)(APP_BASE + "/api/ohlcv?ticker=" + encodeURIComponent(ticker) + "&days=2500");
     const d = await r.json();
     if (d.error) throw new Error(d.error);
     ohlcvCache = d;

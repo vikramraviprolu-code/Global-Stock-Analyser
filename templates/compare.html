@@ -6,12 +6,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='screener.css') }}">
+<script src="{{ url_for('static', filename='ui.js') }}"></script>
 </head>
 <body>
 {% set active_page = 'compare' %}
 {% include '_nav.html' %}
 
-<div class="screener-shell" style="grid-template-columns: 1fr;">
+<main class="screener-shell" id="main" style="grid-template-columns: 1fr;">
   <section class="results-panel">
     <header class="results-header">
       <div>
@@ -43,7 +44,7 @@
       <span class="src-badge mock">MOCK</span> are synthetic fallback only.
     </p>
   </section>
-</div>
+</main>
 
 <script>
 const APP_BASE = {{ request.script_root|tojson }};
@@ -198,7 +199,7 @@ async function runCompare() {
 
   try {
     const [metricsRes, ...sparkRes] = await Promise.all([
-      fetch(APP_BASE + "/api/metrics", {
+      (window.fetchWithRetry || fetch)(APP_BASE + "/api/metrics", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tickers }),
@@ -209,7 +210,7 @@ async function runCompare() {
           const prefs = JSON.parse(localStorage.getItem("equityscope.prefs") || "{}");
           if (prefs.sparkDays) days = parseInt(prefs.sparkDays);
         } catch (e) {}
-        return fetch(APP_BASE + "/api/sparkline?ticker=" + encodeURIComponent(t) + "&days=" + days)
+        return (window.fetchWithRetry || fetch)(APP_BASE + "/api/sparkline?ticker=" + encodeURIComponent(t) + "&days=" + days)
           .then((r) => r.ok ? r.json() : { ticker: t, closes: [] })
           .catch(() => ({ ticker: t, closes: [] }));
       }),

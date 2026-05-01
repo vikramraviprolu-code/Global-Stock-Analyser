@@ -6,12 +6,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='screener.css') }}">
+<script src="{{ url_for('static', filename='ui.js') }}"></script>
 </head>
 <body>
 {% set active_page = 'watchlists' %}
 {% include '_nav.html' %}
 
-<div class="screener-shell">
+<main class="screener-shell" id="main">
   <aside class="filter-panel">
     <h2>Lists</h2>
     <div id="list-tabs" class="list-tabs"></div>
@@ -74,7 +75,7 @@
       <span class="src-badge mock">MOCK</span> are synthetic fallback.
     </p>
   </section>
-</div>
+</main>
 
 <script src="{{ url_for('static', filename='watchlist.js') }}"></script>
 <script>
@@ -174,7 +175,7 @@ async function load() {
       const prefs = JSON.parse(localStorage.getItem("equityscope.prefs") || "{}");
       if (prefs.sparkDays) sparkDays = parseInt(prefs.sparkDays);
     } catch (e) {}
-    const res = await fetch(APP_BASE + "/api/metrics", {
+    const res = await (window.fetchWithRetry || fetch)(APP_BASE + "/api/metrics", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tickers: list, include_sparkline: true, sparkline_days: sparkDays }),

@@ -6,13 +6,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='screener.css') }}">
+<script src="{{ url_for('static', filename='ui.js') }}"></script>
 <script src="{{ url_for('static', filename='watchlist.js') }}"></script>
 </head>
 <body>
 {% set active_page = 'screener' %}
 {% include '_nav.html' %}
 
-<div class="screener-shell">
+<main class="screener-shell" id="main">
   <aside class="filter-panel">
     <div class="fp-tabs">
       <button class="fp-tab active" data-tab="presets">Presets</button>
@@ -335,7 +336,7 @@ function sparkline(closes, w = 100, h = 28) {
 // ---------- presets ----------
 async function loadPresets() {
   try {
-    const res = await fetch(APP_BASE + "/api/screener/presets");
+    const res = await (window.fetchWithRetry || fetch)(APP_BASE + "/api/screener/presets");
     const data = await res.json();
     $("preset-list").innerHTML = data.presets.map((p) => `
       <button class="preset-card" data-key="${p.key}">
@@ -474,7 +475,7 @@ async function runScreen(opts = {}) {
   }
 
   try {
-    const res = await fetch(APP_BASE + "/api/screener/run", {
+    const res = await (window.fetchWithRetry || fetch)(APP_BASE + "/api/screener/run", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

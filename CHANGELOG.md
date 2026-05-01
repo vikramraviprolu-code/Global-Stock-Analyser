@@ -4,6 +4,73 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.15.0] - 2026-05-01
+
+### Added — UI Foundations (PRD §6 — Information Architecture + UI Layer)
+
+**Grouped navigation** — `_nav.html` restructured into 4 PRD-aligned groups
+with active-group highlight: **Research** (Screener / Analysis / Compare),
+**Workspace** (Watchlists + Portfolio/Alerts placeholders for v0.16/17),
+**Market** (Events), **System** (Data Quality / Sources / Settings).
+Group label sits above each cluster; current page lights up the whole
+group. ARIA roles (`role="menubar"`, `role="menuitem"`, `aria-disabled`)
+on every link. Mobile hamburger toggle wires via shared `ui.js` so the
+groups collapse to a vertical list under 720 px.
+
+**Reusable UI helpers** (`static/ui.js`)
+- `UI.tableSkeleton(rows, cols)` — shimmer rows with `aria-busy="true"`
+- `UI.statGridSkeleton(count)` — Snapshot-style metric grid placeholder
+- `UI.paragraphSkeleton(lines)` — narrative block placeholder
+- `UI.cardGridSkeleton(count)` — Watchlists / Compare / Screener cards
+- `UI.emptyState({title, description, icon, linkText, linkHref})` —
+  consistent empty UI with optional CTA, `role="status"`
+- `UI.toast(msg, {type, duration})` — auto-injected toast host
+  (`role="status"`, `aria-live="polite"`); `success` / `error` /
+  `warning` variants
+
+**`fetchWithRetry`** — retry-aware fetch wrapper at `window.fetchWithRetry`.
+Retries on 408 / 425 / 429 / 5xx + network/abort errors. Skips
+deterministic 4xx (400 / 401 / 403 / 404 / 422). 12s default timeout
+(pass `{timeout: 30000}` for AI/news endpoints per PRD). Exponential
+backoff (250ms → 500ms → 1s). All 13 fetch call-sites across screener /
+analysis / watchlists / compare / events / data-quality / settings / sources
+swap to `(window.fetchWithRetry || fetch)(...)` so the helper degrades
+gracefully if `ui.js` fails to load.
+
+**Accessibility pass**
+- `<a class="skip-link" href="#main">Skip to main content</a>` injected
+  at the top of every page via `_nav.html`
+- All primary content wrapped in `<main id="main">` landmark
+- `aria-label` on the brand link, mobile-toggle button, and all
+  menubar elements
+- `:focus-visible` rings on every interactive control (buttons, score
+  bars, score-cell, nav links, brand)
+- Toast region uses `aria-live="polite"`; skeletons broadcast
+  `aria-busy="true"`
+
+**Mobile responsive (375 px audit)**
+- Nav collapses to hamburger under 720 px; group labels remain visible
+  in the dropdown
+- Screener filter sidebar stacks above results under 900 px
+- Card view becomes 1 column under 720 px
+- Compare-input field fills width under 720 px
+- Tables shrink to 11px font under 720 px
+- Version tag hidden under 400 px to save header space
+- All shells (`screener-shell`, `analysis-shell`) reduce padding to
+  `12px 14px` under 900 px
+
+### Changed
+- All eight templates (`screener`, `index`, `watchlists`, `compare`,
+  `events`, `data_quality`, `settings`, `sources`) now load `ui.js`
+  before any inline scripts so the helpers are defined when needed.
+- Screener / Analysis containers switched from `<div>` to `<main>` to
+  match the new `#main` landmark target.
+
+### Tests
+All 134 tests still pass. UI helpers are pure browser code; covered by
+the existing route-renders tests (which now check the skip-link +
+`<main>` landmark presence).
+
 ## [0.14.0] - 2026-04-29
 
 ### Added — Multi-source verification + watchlist sparklines + polish

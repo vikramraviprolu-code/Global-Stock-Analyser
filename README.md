@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style](https://img.shields.io/badge/code%20style-pep8-orange.svg)](https://peps.python.org/pep-0008/)
 [![Tests](https://img.shields.io/badge/tests-134%20passing-brightgreen.svg)]()
-[![Version](https://img.shields.io/badge/version-0.14.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.15.0-blue.svg)](CHANGELOG.md)
 
 Free, no-API-key, open-source equity research platform. Discover stocks via a
 filterable Screener, drill into a full 8-tab Stock Analysis page, manage local
@@ -21,13 +21,26 @@ Inspired by TradingView, FINVIZ, Koyfin, Simply Wall St, and StockAnalysis.com
 
 ---
 
-## What's new in v0.14.0
+## What's new in v0.15.0
 
-- **Multi-source price verification** — Stooq + yfinance fetched in parallel and
-  cross-validated. When both agree within 2%, the metric earns
-  `verified_source_count = 2` and a green ✓ on its source badge.
-- **Sparklines on Watchlist cards** — 60-day SVG mini-charts (configurable via
-  Settings).
+UI Foundations — the app now matches the PRD's information architecture and
+accessibility expectations:
+
+- **Grouped navigation** — Research / Workspace / Market / System with
+  active-group highlight. Mobile hamburger collapses groups under 720 px.
+- **Reusable UI helpers** (`static/ui.js`) — `UI.tableSkeleton`,
+  `UI.statGridSkeleton`, `UI.paragraphSkeleton`, `UI.cardGridSkeleton`,
+  `UI.emptyState`, `UI.toast`. All carry `aria-busy` / `aria-live` per WCAG.
+- **`fetchWithRetry`** — retry on 408/425/429/5xx + network errors;
+  skips deterministic 4xx; exponential backoff; 12s default timeout
+  (30s opt-in for AI/news per PRD). Wired across all 13 fetch call-sites.
+- **A11y pass** — skip-link, `<main>` landmark, focus-visible rings,
+  ARIA labels on icon-only controls.
+- **Mobile 375 px audit** — every page renders cleanly at the smallest
+  iPhone width.
+
+Previous: see [CHANGELOG.md](CHANGELOG.md) for v0.14.0 multi-source
+verification + watchlist sparklines.
 
 Full version history: [CHANGELOG.md](CHANGELOG.md).
 

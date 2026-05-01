@@ -1,22 +1,63 @@
-{# Shared top navigation for v2 pages. Active link is highlighted via the
-   `active_page` variable passed from the route ("screener" / "analysis" /
-   "watchlists" / "compare" / "data-quality" / "sources" / "settings"). #}
-<nav class="v2-nav">
+{# Shared top nav grouped per PRD into Research / Workspace / Market / System.
+   Each route template sets `active_page`; the group highlight is derived. #}
+{% set GROUP_FOR = {
+  'screener': 'research', 'analysis': 'research', 'compare': 'research',
+  'watchlists': 'workspace', 'portfolio': 'workspace', 'alerts': 'workspace',
+  'events': 'market',
+  'data-quality': 'system', 'sources': 'system', 'settings': 'system',
+} %}
+{% set active_group = GROUP_FOR.get(active_page, '') %}
+<a href="#main" class="skip-link">Skip to main content</a>
+<nav class="v2-nav" aria-label="Main">
   <div class="v2-nav-inner">
-    <a href="{{ url_for('home') }}" class="v2-brand">
-      <span class="v2-logo">▲</span>
+    <a href="{{ url_for('home') }}" class="v2-brand" aria-label="EquityScope home">
+      <span class="v2-logo" aria-hidden="true">▲</span>
       <span>EquityScope</span>
       <span class="v2-version">v2</span>
     </a>
-    <div class="v2-nav-links">
-      <a href="{{ url_for('screener_page') }}" class="{{ 'active' if active_page == 'screener' else '' }}">Screener</a>
-      <a href="{{ url_for('dashboard') }}" class="{{ 'active' if active_page == 'analysis' else '' }}">Stock Analysis</a>
-      <a href="{{ url_for('watchlists_page') }}" class="{{ 'active' if active_page == 'watchlists' else '' }}">Watchlists</a>
-      <a href="{{ url_for('compare_page') }}" class="{{ 'active' if active_page == 'compare' else '' }}">Compare</a>
-      <a href="{{ url_for('events_page') }}" class="{{ 'active' if active_page == 'events' else '' }}">Events</a>
-      <a href="{{ url_for('data_quality_page') }}" class="{{ 'active' if active_page == 'data-quality' else '' }}">Data Quality</a>
-      <a href="{{ url_for('sources_page') }}" class="{{ 'active' if active_page == 'sources' else '' }}">Sources</a>
-      <a href="{{ url_for('settings_page') }}" class="{{ 'active' if active_page == 'settings' else '' }}">Settings</a>
-    </div>
+    <ul class="v2-nav-groups" role="menubar">
+      <li class="v2-group {{ 'active' if active_group == 'research' else '' }}" role="none">
+        <span class="v2-grp-label">Research</span>
+        <span class="v2-grp-links">
+          <a href="{{ url_for('screener_page') }}" role="menuitem"
+             class="{{ 'active' if active_page == 'screener' else '' }}">Screener</a>
+          <a href="{{ url_for('dashboard') }}" role="menuitem"
+             class="{{ 'active' if active_page == 'analysis' else '' }}">Analysis</a>
+          <a href="{{ url_for('compare_page') }}" role="menuitem"
+             class="{{ 'active' if active_page == 'compare' else '' }}">Compare</a>
+        </span>
+      </li>
+      <li class="v2-group {{ 'active' if active_group == 'workspace' else '' }}" role="none">
+        <span class="v2-grp-label">Workspace</span>
+        <span class="v2-grp-links">
+          <a href="{{ url_for('watchlists_page') }}" role="menuitem"
+             class="{{ 'active' if active_page == 'watchlists' else '' }}">Watchlists</a>
+          <a href="#" class="disabled" role="menuitem" aria-disabled="true"
+             title="Portfolio coming in v0.16.0">Portfolio</a>
+          <a href="#" class="disabled" role="menuitem" aria-disabled="true"
+             title="Alerts coming in v0.17.0">Alerts</a>
+        </span>
+      </li>
+      <li class="v2-group {{ 'active' if active_group == 'market' else '' }}" role="none">
+        <span class="v2-grp-label">Market</span>
+        <span class="v2-grp-links">
+          <a href="{{ url_for('events_page') }}" role="menuitem"
+             class="{{ 'active' if active_page == 'events' else '' }}">Events</a>
+        </span>
+      </li>
+      <li class="v2-group {{ 'active' if active_group == 'system' else '' }}" role="none">
+        <span class="v2-grp-label">System</span>
+        <span class="v2-grp-links">
+          <a href="{{ url_for('data_quality_page') }}" role="menuitem"
+             class="{{ 'active' if active_page == 'data-quality' else '' }}">Data Quality</a>
+          <a href="{{ url_for('sources_page') }}" role="menuitem"
+             class="{{ 'active' if active_page == 'sources' else '' }}">Sources</a>
+          <a href="{{ url_for('settings_page') }}" role="menuitem"
+             class="{{ 'active' if active_page == 'settings' else '' }}">Settings</a>
+        </span>
+      </li>
+    </ul>
+    <button class="v2-mobile-toggle" aria-label="Toggle navigation menu"
+            aria-expanded="false" aria-controls="v2-nav-groups">☰</button>
   </div>
 </nav>
