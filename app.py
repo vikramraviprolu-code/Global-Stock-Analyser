@@ -290,6 +290,11 @@ def settings_page():
     return render_template("settings.html")
 
 
+@app.route("/portfolio")
+def portfolio_page():
+    return render_template("portfolio.html")
+
+
 # ----- v2 API ----------------------------------------------------------------
 
 @app.route("/api/screener/presets")
@@ -542,7 +547,7 @@ def api_server_info():
     import sys
     cache_stats = _universe_service._enriched_cache.stats()
     return jsonify({
-        "version": "0.15.0",
+        "version": "0.16.0",
         "python": sys.version.split()[0],
         "platform": platform.platform(),
         "url_prefix": URL_PREFIX or "/",
@@ -566,6 +571,63 @@ def api_clear_cache():
         return jsonify({"error": "Cross-origin clear-cache blocked."}), 403
     _universe_service._enriched_cache.clear()
     return jsonify({"cleared": True})
+
+
+CCY_RE = re.compile(r"^[A-Z]{3}$")
+
+
+@app.route("/api/fx")
+def api_fx():
+    """Single currency-pair rate. Used by Portfolio + Compare for base-ccy rollups."""
+    fr = (request.args.get("from") or "USD").upper().strip()
+    to = (request.args.get("to") or "USD").upper().strip()
+    if not CCY_RE.match(fr) or not CCY_RE.match(to):
+        return jsonify({"error": "Invalid currency code (3 letters required)."}), 400
+    try:
+        from markets import fx_rate
+        rate = fx_rate(fr, to)
+    except Exception:
+        app.logger.exception("FX fetch failed for %s→%s", fr, to)
+        return jsonify({"from": fr, "to": to, "rate": None,
+                        "freshness": "unavailable",
+                        "warning": "FX provider error."}), 200
+    return jsonify(_scrub_nan({
+        "from": fr, "to": to, "rate": rate,
+        "freshness": "cached" if rate is not None else "unavailable",
+        "source_name": "Yahoo Finance" if rate is not None else None,
+        "source_url": f"https://finance.yahoo.com/quote/{fr}{to}=X" if rate is not None else None,
+    }))
+
+
+@app.route("/api/fx/batch", methods=["POST"])
+def api_fx_batch():
+    """Batch currency-pair rates. Payload: {pairs: [{from, to}, ...]}.
+    Returns {rates: {"FROM_TO": rate}}. Up to 30 pairs."""
+    data = request.get_json(silent=True) or {}
+    pairs = data.get("pairs") or []
+    if not isinstance(pairs, list) or not pairs:
+        return jsonify({"error": "pairs (list) required."}), 400
+    if len(pairs) > 30:
+        return jsonify({"error": "Max 30 pairs per batch."}), 400
+    cleaned = []
+    for p in pairs:
+        if not isinstance(p, dict):
+            continue
+        fr = str(p.get("from", "")).upper().strip()
+        to = str(p.get("to", "")).upper().strip()
+        if CCY_RE.match(fr) and CCY_RE.match(to):
+            cleaned.append((fr, to))
+    if not cleaned:
+        return jsonify({"error": "No valid pairs."}), 400
+
+    from markets import fx_rate
+    rates = {}
+    for fr, to in cleaned:
+        try:
+            rates[f"{fr}_{to}"] = fx_rate(fr, to)
+        except Exception:
+            rates[f"{fr}_{to}"] = None
+    return jsonify(_scrub_nan({"rates": rates}))
 
 
 @app.route("/api/sources/health")

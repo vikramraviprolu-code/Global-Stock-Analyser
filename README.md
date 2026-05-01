@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style](https://img.shields.io/badge/code%20style-pep8-orange.svg)](https://peps.python.org/pep-0008/)
 [![Tests](https://img.shields.io/badge/tests-134%20passing-brightgreen.svg)]()
-[![Version](https://img.shields.io/badge/version-0.15.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.16.0-blue.svg)](CHANGELOG.md)
 
 Free, no-API-key, open-source equity research platform. Discover stocks via a
 filterable Screener, drill into a full 8-tab Stock Analysis page, manage local
@@ -20,6 +20,17 @@ Inspired by TradingView, FINVIZ, Koyfin, Simply Wall St, and StockAnalysis.com
 — but **free / no API keys / no scraping by default**.
 
 ---
+
+## What's new in v0.16.0
+
+**Portfolio** — full holdings tracker. localStorage-backed, no login.
+Multi-currency cost basis + live prices, P/L in both local and base
+currencies, sortable holdings table, allocation breakdowns by Sector /
+Country / Currency, CSV+JSON export, JSON import. Quick-add button on
+the Stock Analysis page header.
+
+New endpoints: `GET /api/fx?from=&to=` for single FX rate,
+`POST /api/fx/batch` for up to 30 pairs in one round-trip.
 
 ## What's new in v0.15.0
 

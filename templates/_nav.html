@@ -32,8 +32,8 @@
         <span class="v2-grp-links">
           <a href="{{ url_for('watchlists_page') }}" role="menuitem"
              class="{{ 'active' if active_page == 'watchlists' else '' }}">Watchlists</a>
-          <a href="#" class="disabled" role="menuitem" aria-disabled="true"
-             title="Portfolio coming in v0.16.0">Portfolio</a>
+          <a href="{{ url_for('portfolio_page') }}" role="menuitem"
+             class="{{ 'active' if active_page == 'portfolio' else '' }}">Portfolio</a>
           <a href="#" class="disabled" role="menuitem" aria-disabled="true"
              title="Alerts coming in v0.17.0">Alerts</a>
         </span>

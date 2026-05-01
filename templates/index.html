@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='analysis.css') }}">
 <script src="{{ url_for('static', filename='ui.js') }}"></script>
 <script src="{{ url_for('static', filename='watchlist.js') }}"></script>
+<script src="{{ url_for('static', filename='portfolio.js') }}"></script>
 <script src="{{ url_for('static', filename='vendor/lightweight-charts.standalone.production.js') }}"></script>
 </head>
 <body>
@@ -45,7 +46,8 @@
       </div>
       <div class="header-actions">
         <span id="header-freshness"></span>
-        <button id="header-watchlist" class="btn-ghost">★ Add to watchlist</button>
+        <button id="header-watchlist" class="btn-ghost" aria-label="Toggle watchlist">★ Add to watchlist</button>
+        <button id="header-portfolio" class="btn-ghost" aria-label="Add to portfolio">💼 Add to portfolio</button>
       </div>
     </header>
 
@@ -268,6 +270,20 @@ function render() {
     if (Watchlists.allTickers().has(t)) Watchlists.names().forEach((n) => Watchlists.remove(t, n));
     else Watchlists.add(t);
     render();
+  };
+  // Portfolio quick-add
+  $("header-portfolio").onclick = () => {
+    const sharesStr = prompt(`Add ${t} to portfolio — how many shares?`);
+    if (sharesStr == null) return;
+    const ccy = i.security.currency || "USD";
+    const costStr = prompt(`Average cost per share in ${ccy}? (live price ${i.price.value?.toFixed?.(2) || "?"})`,
+                            i.price.value != null ? i.price.value.toFixed(2) : "");
+    if (costStr == null) return;
+    const h = window.Portfolio && Portfolio.add({
+      ticker: t, shares: sharesStr, costPerShare: costStr, costCurrency: ccy,
+    });
+    if (h) UI.toast(`Added ${h.shares} ${t} to portfolio`, { type: "success" });
+    else UI.toast("Add failed — check share count + cost.", { type: "error" });
   };
 
   renderSnapshot(i);

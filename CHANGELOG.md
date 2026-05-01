@@ -4,6 +4,64 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.16.0] - 2026-05-01
+
+### Added — Portfolio (PRD Build Step 8)
+
+**`/portfolio` page** — full holdings tracker with cost basis, live P/L,
+multi-currency rollup, and allocation breakdowns.
+
+Storage (`static/portfolio.js`)
+- localStorage-backed (`equityscope.portfolio`); no login per PRD.
+- Holding shape: `{id, ticker, shares, costPerShare, costCurrency,
+  purchaseDate, notes, createdAt}`.
+- API: `Portfolio.add()`, `update()`, `remove()`, `clear()`, `list()`,
+  `tickers()`, `currencies()`, `valuate(metricsByTicker, fxByPair)`,
+  `setBaseCurrency()`, `baseCurrency()`.
+
+Page features
+- Add-holding form: ticker, shares, cost/share, cost currency,
+  purchase date, notes — all validated client-side.
+- Live pricing via batched `/api/metrics` (chunks of 12 to respect API
+  cap).
+- Multi-currency: per-row P/L computed in cost-currency when live ccy
+  matches; portfolio totals rolled up into base currency (USD default,
+  user-selectable).
+- 5-card totals strip: Total Value · Total Cost · Unrealized P/L · P/L %
+  · Holdings count.
+- Sortable holdings table: ticker / company / shares / avg cost /
+  price / value (local) / value (base) / P/L / P/L % / weight / source.
+- Allocation breakdowns (3 cards): by Sector, by Country, by Currency,
+  with percentage bars + base-ccy values.
+- Edit (shares + cost) / remove per-row inline.
+- CSV + JSON export of holdings + valuation.
+- JSON import (replaces existing portfolio after confirm).
+- "Add to portfolio" quick-action on the Stock Analysis header.
+- Empty-state when no holdings.
+
+Backend
+- `GET /api/fx?from=&to=` — single FX rate via `markets.fx_rate()`,
+  returns `{rate, freshness, source_name, source_url}`.
+- `POST /api/fx/batch` — up to 30 currency pairs in one round-trip,
+  returns `{rates: {"FROM_TO": rate}}`. Used by Portfolio for the
+  base-currency rollup.
+- Both endpoints validate ISO 4217 3-letter codes via regex; invalid
+  codes return 400.
+
+Nav
+- `_nav.html`: Portfolio link enabled (was aria-disabled placeholder).
+
+### Tests
+- `tests/test_portfolio.py` — 11 cases. Route renders, FX validation
+  (invalid codes / unknown pair / same-ccy = 1.0), FX batch payload
+  shape + invalid-pair filtering + 30-pair cap, nav link presence.
+- All **144 tests pass** (was 134 in v0.15.0).
+
+### Smoke test (live FX)
+- INR→USD: 0.01054
+- EUR→USD: 1.17247
+- JPY→USD: 0.00637
+
 ## [0.15.0] - 2026-05-01
 
 ### Added — UI Foundations (PRD §6 — Information Architecture + UI Layer)

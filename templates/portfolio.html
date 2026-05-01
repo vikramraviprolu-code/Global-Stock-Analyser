@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Portfolio — EquityScope</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='screener.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='analysis.css') }}">
+<script src="{{ url_for('static', filename='ui.js') }}"></script>
+<script src="{{ url_for('static', filename='watchlist.js') }}"></script>
+<script src="{{ url_for('static', filename='portfolio.js') }}"></script>
+</head>
+<body>
+{% set active_page = 'portfolio' %}
+{% include '_nav.html' %}
+
+<main class="screener-shell" id="main" style="grid-template-columns: 1fr;">
+  <section class="results-panel">
+    <header class="results-header">
+      <div>
+        <h1>Portfolio</h1>
+        <p class="muted" id="pf-summary">Loading…</p>
+      </div>
+      <div class="rh-toolbar">
+        <label class="setting-check" style="font-size: 12px;">
+          Base ccy
+          <select id="pf-base-ccy" aria-label="Portfolio base currency">
+            <option>USD</option><option>EUR</option><option>GBP</option><option>INR</option>
+            <option>JPY</option><option>HKD</option><option>SGD</option><option>AUD</option>
+            <option>CHF</option><option>CAD</option>
+          </select>
+        </label>
+        <button class="btn-ghost" id="pf-refresh" aria-label="Refresh portfolio prices">↻ Refresh</button>
+        <button class="btn-ghost" id="pf-csv" aria-label="Export holdings CSV">↓ CSV</button>
+        <button class="btn-ghost" id="pf-json" aria-label="Export holdings JSON">↓ JSON</button>
+        <button class="btn-ghost" id="pf-import" aria-label="Import holdings JSON">↑ Import</button>
+        <input type="file" id="pf-import-file" accept=".json,application/json" style="display:none;">
+      </div>
+    </header>
+
+    <div class="card pf-add-card">
+      <h2>Add Holding</h2>
+      <form id="pf-add-form" class="pf-add-grid" autocomplete="off">
+        <label>Ticker
+          <input id="pf-ticker" type="text" placeholder="AAPL" required maxlength="20">
+        </label>
+        <label>Shares
+          <input id="pf-shares" type="number" step="0.0001" min="0" required>
+        </label>
+        <label>Cost / share
+          <input id="pf-cost" type="number" step="0.01" min="0" required>
+        </label>
+        <label>Cost ccy
+          <input id="pf-cost-ccy" type="text" value="USD" maxlength="3" required style="text-transform:uppercase;">
+        </label>
+        <label>Purchase date
+          <input id="pf-date" type="date">
+        </label>
+        <label>Notes
+          <input id="pf-notes" type="text" maxlength="200" placeholder="optional">
+        </label>
+        <button type="submit" class="btn-primary">+ Add</button>
+      </form>
+    </div>
+
+    <div id="pf-totals" class="pf-totals"></div>
+
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <div style="margin-top: 12px;">Pricing holdings + fetching FX…</div>
+    </div>
+
+    <div id="pf-empty" class="empty-state hidden" role="status">
+      <div class="empty-state-icon" aria-hidden="true">💼</div>
+      <div class="empty-state-title">No holdings yet</div>
+      <div class="empty-state-desc">Add your first holding above. Holdings are stored in this browser only — no login, no sync.</div>
+    </div>
+
+    <div id="pf-table-wrap" class="hidden">
+      <h2 style="margin-top: 16px;">Holdings</h2>
+      <div style="overflow-x: auto;">
+      <table class="results-table" id="pf-table">
+        <thead><tr>
+          <th data-sort="ticker">Ticker</th>
+          <th data-sort="company">Company</th>
+          <th class="num" data-sort="shares">Shares</th>
+          <th class="num" data-sort="cost">Avg cost</th>
+          <th class="num" data-sort="livePrice">Price</th>
+          <th class="num" data-sort="valueLocal">Value (local)</th>
+          <th class="num" data-sort="valueBase">Value (<span id="th-base">USD</span>)</th>
+          <th class="num" data-sort="plBase">Unreal P/L</th>
+          <th class="num" data-sort="plBasePct">P/L %</th>
+          <th class="num" data-sort="weightPct">Weight</th>
+          <th>Source</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="pf-tbody"></tbody>
+      </table>
+      </div>
+    </div>
+
+    <div id="pf-allocation" class="hidden">
+      <h2 style="margin-top: 24px;">Allocation</h2>
+      <div class="alloc-grid">
+        <div class="alloc-card"><h3>By Sector</h3><div id="alloc-sector"></div></div>
+        <div class="alloc-card"><h3>By Country</h3><div id="alloc-country"></div></div>
+        <div class="alloc-card"><h3>By Currency</h3><div id="alloc-ccy"></div></div>
+      </div>
+    </div>
+
+    <p class="disclaimer">
+      Holdings are stored in this browser only. P/L computed from live prices
+      (free sources, may be delayed) and FX from yfinance currency pairs.
+      For a true cost-basis you should track lots and tax-lots separately —
+      this view assumes a single weighted-average cost per ticker.
+      <strong>Not financial advice.</strong>
+    </p>
+  </section>
+</main>
+
+<script>
+const APP_BASE = {{ request.script_root|tojson }};
+const $ = (id) => document.getElementById(id);
+
+const fmtN = (n, dec = 2) => (n == null ? "—" : Number(n).toFixed(dec));
+const fmtPct = (n) => (n == null ? "—" : (n >= 0 ? "+" : "") + Number(n).toFixed(2) + "%");
+const fmtMoney = (n, ccy = "USD") => {
+  if (n == null) return "—";
+  const v = Number(n);
+  if (Math.abs(v) >= 1e9) return `${ccy} ${(v/1e9).toFixed(2)}B`;
+  if (Math.abs(v) >= 1e6) return `${ccy} ${(v/1e6).toFixed(2)}M`;
+  if (Math.abs(v) >= 1e3) return `${ccy} ${(v/1e3).toFixed(2)}K`;
+  return `${ccy} ${v.toFixed(2)}`;
+};
+const cls = (n) => (n == null ? "muted" : n > 0 ? "green" : n < 0 ? "red" : "muted");
+const flag = (c) => ({"USA":"🇺🇸","India":"🇮🇳","UK":"🇬🇧","Germany":"🇩🇪","France":"🇫🇷","Netherlands":"🇳🇱","Switzerland":"🇨🇭","Italy":"🇮🇹","Spain":"🇪🇸","Sweden":"🇸🇪","Finland":"🇫🇮","Denmark":"🇩🇰","Norway":"🇳🇴","Japan":"🇯🇵","Hong Kong":"🇭🇰","South Korea":"🇰🇷","Taiwan":"🇹🇼","Singapore":"🇸🇬","Australia":"🇦🇺","China":"🇨🇳","Canada":"🇨🇦"}[c] || "🌐");
+
+const sourceBadge = (sv) => {
+  if (!sv) return '<span class="src-badge unavailable">—</span>';
+  const f = sv.freshness || "unavailable";
+  const cssCls = "src-badge " + f.replace(/[^a-z]/g, "-");
+  const verified = sv.verified_source_count || 0;
+  const verifiedDot = verified >= 2 ? ' <span class="verified-dot" title="Verified by 2+ sources">✓</span>' : '';
+  const label = ({"real-time":"live","delayed":"delayed","previous-close":"prev","historical-only":"historical","cached":"cached","unavailable":"—","mock":"MOCK"})[f] || f;
+  return `<span class="${cssCls}">${label}${verifiedDot}</span>`;
+};
+
+let metricsCache = {};   // ticker → metrics
+let fxCache = {};        // FROM_TO → rate
+let lastValuation = null;
+let currentSort = { col: "valueBase", dir: "desc" };
+
+// ---------- bind base ccy ----------
+$("pf-base-ccy").value = Portfolio.baseCurrency();
+$("pf-base-ccy").onchange = () => {
+  Portfolio.setBaseCurrency($("pf-base-ccy").value);
+  $("th-base").textContent = Portfolio.baseCurrency();
+  load();
+};
+$("th-base").textContent = Portfolio.baseCurrency();
+
+// ---------- add form ----------
+$("pf-add-form").onsubmit = (e) => {
+  e.preventDefault();
+  const h = Portfolio.add({
+    ticker: $("pf-ticker").value,
+    shares: $("pf-shares").value,
+    costPerShare: $("pf-cost").value,
+    costCurrency: $("pf-cost-ccy").value,
+    purchaseDate: $("pf-date").value,
+    notes: $("pf-notes").value,
+  });
+  if (!h) {
+    UI.toast("Invalid holding — check ticker / shares / cost.", { type: "error" });
+    return;
+  }
+  UI.toast(`Added ${h.shares} ${h.ticker}`, { type: "success" });
+  e.target.reset();
+  $("pf-cost-ccy").value = "USD";
+  load();
+};
+
+// ---------- export / import ----------
+$("pf-csv").onclick = () => {
+  if (!lastValuation) return;
+  const headers = ["Ticker","Company","Shares","CostPerShare","CostCurrency","PurchaseDate","Notes",
+                   "LivePrice","LiveCurrency","ValueLocal","ValueBase","BaseCurrency",
+                   "UnrealPLBase","UnrealPLBasePct","WeightPct","Sector","Country"];
+  const rows = lastValuation.rows.map((r) => [
+    r.holding.ticker,
+    r.metrics?.security?.company_name || "",
+    r.holding.shares, r.holding.costPerShare, r.holding.costCurrency,
+    r.holding.purchaseDate, r.holding.notes,
+    r.livePrice, r.liveCcy, r.valueLocal, r.valueBase, lastValuation.baseCurrency,
+    r.plBase, r.plBasePct, r.weightPct, r.sector, r.country,
+  ].map((v) => `"${String(v ?? "").replaceAll('"','""')}"`).join(","));
+  download(headers.join(",") + "\n" + rows.join("\n"), "text/csv", `portfolio-${Date.now()}.csv`);
+};
+$("pf-json").onclick = () => {
+  download(JSON.stringify(Portfolio.all(), null, 2), "application/json",
+           `portfolio-${Date.now()}.json`);
+};
+$("pf-import").onclick = () => $("pf-import-file").click();
+$("pf-import-file").onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (!confirm("Replace your current portfolio with the imported file? This wipes existing holdings.")) {
+    e.target.value = "";
+    return;
+  }
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data || !Array.isArray(data.holdings)) throw new Error("Invalid format.");
+    localStorage.setItem("equityscope.portfolio", JSON.stringify(data));
+    UI.toast(`Imported ${data.holdings.length} holding(s).`, { type: "success" });
+    $("pf-base-ccy").value = Portfolio.baseCurrency();
+    $("th-base").textContent = Portfolio.baseCurrency();
+    load();
+  } catch (err) {
+    UI.toast("Import failed: " + err.message, { type: "error" });
+  }
+  e.target.value = "";
+};
+
+function download(payload, mime, filename) {
+  const blob = new Blob([payload], { type: mime });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ---------- load + price ----------
+$("pf-refresh").onclick = () => { metricsCache = {}; fxCache = {}; load(); };
+
+async function load() {
+  const tickers = Portfolio.tickers();
+  $("pf-empty").classList.toggle("hidden", tickers.length > 0);
+  $("pf-table-wrap").classList.toggle("hidden", tickers.length === 0);
+  $("pf-allocation").classList.toggle("hidden", tickers.length === 0);
+  if (!tickers.length) {
+    $("pf-summary").textContent = "Empty — add your first holding above.";
+    $("pf-totals").innerHTML = "";
+    return;
+  }
+  $("loading").classList.remove("hidden");
+  $("pf-summary").textContent = `Pricing ${tickers.length} ticker(s)…`;
+
+  try {
+    // 1. Fetch live metrics for unknown tickers
+    const need = tickers.filter((t) => !metricsCache[t]);
+    if (need.length) {
+      // Chunk 12 at a time (API limit)
+      for (let i = 0; i < need.length; i += 12) {
+        const chunk = need.slice(i, i + 12);
+        const r = await (window.fetchWithRetry || fetch)(APP_BASE + "/api/metrics", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tickers: chunk }),
+        });
+        const d = await r.json();
+        if (d.metrics) d.metrics.forEach((m) => (metricsCache[m.security.ticker] = m));
+      }
+    }
+
+    // 2. Determine FX pairs needed (cost ccy + live ccy → base)
+    const base = Portfolio.baseCurrency();
+    const pairsNeeded = new Set();
+    Portfolio.list().forEach((h) => {
+      const m = metricsCache[h.ticker];
+      const liveCcy = m?.security?.currency || h.costCurrency;
+      if (h.costCurrency && h.costCurrency !== base) pairsNeeded.add(`${h.costCurrency}_${base}`);
+      if (liveCcy && liveCcy !== base) pairsNeeded.add(`${liveCcy}_${base}`);
+    });
+    const missingPairs = [...pairsNeeded].filter((k) => !(k in fxCache));
+    if (missingPairs.length) {
+      const r = await (window.fetchWithRetry || fetch)(APP_BASE + "/api/fx/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pairs: missingPairs.map((p) => {
+            const [from, to] = p.split("_");
+            return { from, to };
+          }),
+        }),
+      });
+      const d = await r.json();
+      if (d.rates) Object.assign(fxCache, d.rates);
+    }
+
+    // 3. Compute valuation
+    lastValuation = Portfolio.valuate(metricsCache, fxCache);
+    renderTotals(lastValuation);
+    renderTable(lastValuation);
+    renderAllocation(lastValuation);
+    $("pf-summary").textContent =
+      `${lastValuation.rows.length} holding(s) · base ${lastValuation.baseCurrency}`;
+  } catch (e) {
+    UI.toast("Failed to price portfolio: " + e.message, { type: "error" });
+    $("pf-summary").textContent = "❌ " + e.message;
+  } finally {
+    $("loading").classList.add("hidden");
+  }
+}
+
+function renderTotals(v) {
+  const plCls = cls(v.totalPlBase);
+  $("pf-totals").innerHTML = `
+    <div class="dq-stats">
+      <div class="dq-stat"><div class="dq-stat-num">${fmtMoney(v.totalValueBase, v.baseCurrency)}</div>
+        <div class="dq-stat-label">Total Value</div></div>
+      <div class="dq-stat"><div class="dq-stat-num">${fmtMoney(v.totalCostBase, v.baseCurrency)}</div>
+        <div class="dq-stat-label">Total Cost</div></div>
+      <div class="dq-stat ${v.totalPlBase >= 0 ? 'good' : 'danger'}">
+        <div class="dq-stat-num ${plCls}">${fmtMoney(v.totalPlBase, v.baseCurrency)}</div>
+        <div class="dq-stat-label">Unrealized P/L</div></div>
+      <div class="dq-stat ${v.totalPlBasePct >= 0 ? 'good' : 'danger'}">
+        <div class="dq-stat-num ${plCls}">${fmtPct(v.totalPlBasePct)}</div>
+        <div class="dq-stat-label">P/L %</div></div>
+      <div class="dq-stat"><div class="dq-stat-num">${v.rows.length}</div>
+        <div class="dq-stat-label">Holdings</div></div>
+    </div>`;
+}
+
+function renderTable(v) {
+  // Sort
+  const rows = [...v.rows];
+  const k = currentSort.col;
+  const dir = currentSort.dir === "asc" ? 1 : -1;
+  rows.sort((a, b) => {
+    const av = pickSort(a, k);
+    const bv = pickSort(b, k);
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    if (typeof av === "string") return av.localeCompare(bv) * dir;
+    return (av - bv) * dir;
+  });
+
+  $("pf-tbody").innerHTML = rows.map((r) => {
+    const h = r.holding;
+    const company = r.metrics?.security?.company_name || h.ticker;
+    const country = r.metrics?.security?.country;
+    return `<tr data-id="${h.id}">
+      <td><strong>${flag(country)} ${h.ticker}</strong></td>
+      <td>${company}</td>
+      <td class="num">${fmtN(h.shares, 4)}</td>
+      <td class="num">${h.costCurrency} ${fmtN(h.costPerShare)}</td>
+      <td class="num">${r.liveCcy} ${fmtN(r.livePrice)}</td>
+      <td class="num">${r.valueLocal != null ? `${r.liveCcy} ${fmtN(r.valueLocal)}` : "—"}</td>
+      <td class="num">${r.valueBase != null ? fmtMoney(r.valueBase, v.baseCurrency) : "—"}</td>
+      <td class="num ${cls(r.plBase)}">${r.plBase != null ? fmtMoney(r.plBase, v.baseCurrency) : "—"}</td>
+      <td class="num ${cls(r.plBasePct)}">${fmtPct(r.plBasePct)}</td>
+      <td class="num">${r.weightPct != null ? r.weightPct.toFixed(1) + "%" : "—"}</td>
+      <td>${sourceBadge(r.metrics?.price)}</td>
+      <td>
+        <a href="${APP_BASE}/app?ticker=${encodeURIComponent(h.ticker)}" class="btn-ghost mini" aria-label="View ${h.ticker} analysis">view</a>
+        <button class="btn-ghost mini" data-edit="${h.id}" aria-label="Edit holding">✏</button>
+        <button class="btn-ghost mini" data-del="${h.id}" aria-label="Remove holding">✕</button>
+      </td>
+    </tr>`;
+  }).join("");
+
+  $("pf-tbody").querySelectorAll("[data-del]").forEach((b) =>
+    b.onclick = () => {
+      const h = Portfolio.list().find((x) => x.id === b.dataset.del);
+      if (!h) return;
+      if (!confirm(`Remove ${h.shares} ${h.ticker} from portfolio?`)) return;
+      Portfolio.remove(b.dataset.del);
+      UI.toast("Removed.", { type: "success" });
+      load();
+    }
+  );
+  $("pf-tbody").querySelectorAll("[data-edit]").forEach((b) =>
+    b.onclick = () => {
+      const h = Portfolio.list().find((x) => x.id === b.dataset.edit);
+      if (!h) return;
+      const newShares = prompt(`${h.ticker}: new share count?`, String(h.shares));
+      if (newShares == null) return;
+      const newCost = prompt(`${h.ticker}: new average cost per share (${h.costCurrency})?`, String(h.costPerShare));
+      if (newCost == null) return;
+      Portfolio.update(h.id, { shares: newShares, costPerShare: newCost });
+      UI.toast("Updated.", { type: "success" });
+      load();
+    }
+  );
+
+  // Sortable headers
+  document.querySelectorAll("#pf-table thead th[data-sort]").forEach((th) => {
+    th.style.cursor = "pointer";
+    th.onclick = () => {
+      const col = th.dataset.sort;
+      if (currentSort.col === col) currentSort.dir = currentSort.dir === "asc" ? "desc" : "asc";
+      else { currentSort.col = col; currentSort.dir = "desc"; }
+      renderTable(v);
+    };
+  });
+}
+
+function pickSort(r, col) {
+  switch (col) {
+    case "ticker": return r.holding.ticker;
+    case "company": return r.metrics?.security?.company_name || r.holding.ticker;
+    case "shares": return r.holding.shares;
+    case "cost": return r.holding.costPerShare;
+    case "livePrice": return r.livePrice;
+    case "valueLocal": return r.valueLocal;
+    case "valueBase": return r.valueBase;
+    case "plBase": return r.plBase;
+    case "plBasePct": return r.plBasePct;
+    case "weightPct": return r.weightPct;
+  }
+  return null;
+}
+
+// ---------- allocation breakdown ----------
+function renderAllocation(v) {
+  if (!v.rows.length) return;
+  const buckets = (key, fallback = "—") => {
+    const map = new Map();
+    let total = 0;
+    v.rows.forEach((r) => {
+      const k = (key(r) || fallback);
+      const val = r.valueBase || 0;
+      map.set(k, (map.get(k) || 0) + val);
+      total += val;
+    });
+    const arr = [...map.entries()]
+      .map(([k, val]) => ({ k, val, pct: total > 0 ? (val / total) * 100 : 0 }))
+      .sort((a, b) => b.val - a.val);
+    return { rows: arr, total };
+  };
+  const sect = buckets((r) => r.sector, "Unclassified");
+  const country = buckets((r) => r.country, "Unknown");
+  const ccy = buckets((r) => r.liveCcy, "—");
+
+  const renderBars = ({ rows, total }) =>
+    rows.map((b) => `
+      <div class="alloc-row">
+        <div class="alloc-label">${b.k}</div>
+        <div class="alloc-bar"><div class="alloc-fill" style="width:${Math.max(2, b.pct).toFixed(1)}%"></div></div>
+        <div class="alloc-val">${b.pct.toFixed(1)}% · ${fmtMoney(b.val, v.baseCurrency)}</div>
+      </div>`).join("");
+  $("alloc-sector").innerHTML = renderBars(sect);
+  $("alloc-country").innerHTML = renderBars(country);
+  $("alloc-ccy").innerHTML = renderBars(ccy);
+}
+
+load();
+</script>
+</body>
+</html>
