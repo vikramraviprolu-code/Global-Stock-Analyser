@@ -346,6 +346,67 @@
   color: var(--muted);
 }
 
+/* ---------- consent banner ---------- */
+#consent-banner {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 250;
+  background: var(--panel); border-top: 2px solid var(--accent);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
+  animation: consent-slide-up 0.3s ease;
+}
+@keyframes consent-slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.consent-inner {
+  max-width: 1080px; margin: 0 auto; padding: 14px 24px;
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 14px; align-items: center;
+}
+#consent-banner h2 {
+  margin: 0 0 4px; font-size: 14px; font-weight: 700;
+}
+#consent-banner p { margin: 0; font-size: 13px; line-height: 1.55; }
+.consent-link { color: var(--accent); margin-left: 4px; }
+.consent-actions { display: flex; gap: 8px; }
+@media (max-width: 720px) {
+  .consent-inner { grid-template-columns: 1fr; }
+  .consent-actions { flex-direction: column; }
+}
+
+/* ---------- risk profile ---------- */
+.rp-question {
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.rp-question:last-child { border-bottom: none; }
+.rp-q-text { margin-bottom: 8px; font-size: 14px; }
+.rp-q-options {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+.rp-option {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; background: var(--panel-2);
+  border: 1px solid var(--border); border-radius: 4px;
+  font-size: 13px; cursor: pointer;
+}
+.rp-option:hover { border-color: var(--accent); }
+.rp-option input[type="radio"]:checked + span { color: var(--accent); font-weight: 600; }
+.rp-option:has(input:checked) { background: rgba(88, 166, 255, 0.1); border-color: var(--accent); }
+
+.rp-bucket-card {
+  padding: 16px; border-radius: 6px; margin-top: 8px;
+}
+.rp-bucket-label { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+.rp-bucket-score { font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+.rp-bucket-desc { margin: 0; font-size: 13px; line-height: 1.6; }
+.rp-conservative { background: rgba(63, 185, 80, 0.1); border: 1px solid var(--green); }
+.rp-conservative .rp-bucket-label { color: var(--green); }
+.rp-moderate     { background: rgba(63, 185, 80, 0.06); border: 1px solid var(--green); }
+.rp-moderate     .rp-bucket-label { color: var(--green); opacity: 0.85; }
+.rp-balanced     { background: rgba(88, 166, 255, 0.1); border: 1px solid var(--accent); }
+.rp-balanced     .rp-bucket-label { color: var(--accent); }
+.rp-growth       { background: rgba(210, 153, 34, 0.1); border: 1px solid var(--yellow); }
+.rp-growth       .rp-bucket-label { color: var(--yellow); }
+.rp-aggressive   { background: rgba(248, 81, 73, 0.1); border: 1px solid var(--red); }
+.rp-aggressive   .rp-bucket-label { color: var(--red); }
+
 /* responsive */
 @media (max-width: 900px) {
   .chart-canvas { height: 400px; }

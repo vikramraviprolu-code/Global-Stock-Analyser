@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Privacy &amp; Compliance — EquityScope</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='screener.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='analysis.css') }}">
+<script src="{{ url_for('static', filename='ui.js') }}"></script>
+<script src="{{ url_for('static', filename='consent.js') }}"></script>
+</head>
+<body>
+{% set active_page = 'privacy' %}
+{% include '_nav.html' %}
+
+<main class="screener-shell" id="main" style="grid-template-columns: 1fr;">
+  <section class="results-panel" style="max-width: 880px; margin: 0 auto;">
+    <h1>Privacy &amp; Compliance</h1>
+    <p class="muted">Last updated: 2026-05-01 · v0.20.0</p>
+
+    <div class="card">
+      <h2>TL;DR</h2>
+      <ul style="font-size: 14px; line-height: 1.8; padding-left: 18px;">
+        <li>✅ <strong>No cookies.</strong> Zero. Not even functional.</li>
+        <li>✅ <strong>No server-side storage of personal data.</strong> Server only caches market data (prices, fundamentals, FX) — never tied to you.</li>
+        <li>✅ <strong>No analytics, no third-party trackers, no telemetry.</strong></li>
+        <li>✅ <strong>No login / no account / no PII collected.</strong></li>
+        <li>✅ <strong>No AI / LLM / ML models used anywhere.</strong> All "AI-like" features (sentiment, recommendation, scoring) are transparent rule-based heuristics.</li>
+        <li>✅ <strong>Watchlists, portfolio, alerts, prefs</strong> live in your browser's <code>localStorage</code> only — on this device, never transmitted, never sync'd.</li>
+        <li>✅ <strong>You are in full control.</strong> Reset everything with one click on the Settings page.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>What gets stored, and where</h2>
+      <table class="kv-table">
+        <tr><th>Watchlists</th><td><code>localStorage["equityscope.watchlists"]</code> — your browser only</td></tr>
+        <tr><th>Portfolio holdings</th><td><code>localStorage["equityscope.portfolio"]</code></td></tr>
+        <tr><th>Alerts + trigger log</th><td><code>localStorage["equityscope.alerts"]</code></td></tr>
+        <tr><th>Custom screener presets</th><td><code>localStorage["equityscope.customPresets"]</code></td></tr>
+        <tr><th>UI preferences (theme, default landing, sparkline range, compact)</th><td><code>localStorage["equityscope.prefs"]</code> + <code>equityscope.colState</code></td></tr>
+        <tr><th>Risk profile answers + computed bucket</th><td><code>localStorage["equityscope.riskProfile"]</code></td></tr>
+        <tr><th>Consent decision</th><td><code>localStorage["equityscope.consent"]</code></td></tr>
+        <tr><th>Server-side cache (market data only — no user link)</th><td>In-memory, 30-min TTL for prices / fundamentals; 6-hour TTL for FX; 4-hour TTL for events; 15-min TTL for news. Cleared on restart. Never persisted to disk.</td></tr>
+      </table>
+    </div>
+
+    <h2>GDPR / UK GDPR compliance</h2>
+
+    <div class="card">
+      <h3>Lawful basis (Article 6)</h3>
+      <p>EquityScope does not process any personal data on the server side. Browser-local storage of your preferences relies on the lawful basis of <strong>consent</strong> (Article 6(1)(a)) where you explicitly accept the consent banner, or <strong>legitimate interest</strong> for strictly-necessary settings (e.g. remembering "Compact mode") under PECR / ePrivacy "essential" exemption.</p>
+
+      <h3>Data subject rights (Articles 15–22)</h3>
+      <p>Because no personal data is held server-side, the following rights are satisfied through self-service controls in your browser:</p>
+      <ul>
+        <li><strong>Article 15 — Right to access:</strong> Open DevTools → Application → Local Storage to view every stored value verbatim.</li>
+        <li><strong>Article 16 — Right to rectification:</strong> Edit any stored value via the corresponding page (Settings, Watchlists, Portfolio, etc.).</li>
+        <li><strong>Article 17 — Right to erasure:</strong> Settings → "Reset all preferences" wipes every <code>equityscope.*</code> key. Or DevTools → Clear local storage.</li>
+        <li><strong>Article 20 — Right to data portability:</strong> Portfolio + Holdings + Source-Audit pages all expose CSV + JSON export. Watchlist export is on the roadmap (v0.21.0).</li>
+        <li><strong>Article 21 — Right to object:</strong> Decline the consent banner; localStorage features are then disabled.</li>
+        <li><strong>Article 22 — No automated decision-making:</strong> EquityScope produces transparent, deterministic, rule-based recommendations. No ML model is involved in any output that affects you. (See AI Act section below.)</li>
+      </ul>
+
+      <h3>Data Protection Officer (DPO)</h3>
+      <p>This project does not require a DPO under Article 37 (no large-scale or systematic processing). Coordinated disclosure / privacy queries: open an issue at the project repository (link in the footer).</p>
+
+      <h3>International transfers</h3>
+      <p>Market data fetched from Yahoo Finance + Stooq passes between your local machine and those public free endpoints. The app never transmits any of your stored watchlists / portfolio / alerts to any third party. Endpoints contacted on your behalf:</p>
+      <ul>
+        <li><code>finance.yahoo.com</code> — prices, fundamentals, news, calendar (USA)</li>
+        <li><code>stooq.com</code> — OHLCV CSV (Poland; gated for many tickers)</li>
+        <li><code>github.com/FiloSottile/mkcert</code> — only during initial install of the local TLS CA (one-off)</li>
+      </ul>
+
+      <h3>Children</h3>
+      <p>EquityScope is not directed at children under 16. No PII is collected, so no parental consent flow is required (Article 8 not triggered).</p>
+    </div>
+
+    <h2>EU AI Act compliance (Regulation 2024/1689)</h2>
+
+    <div class="card">
+      <h3>Does EquityScope use an AI system?</h3>
+      <p><strong>No.</strong> EquityScope contains no machine-learning model, no large language model, no neural network, and no remote AI API call.</p>
+
+      <h3>What about features called "AI-like" or "smart"?</h3>
+      <p>Every label, score, sentiment classification, recommendation, and topic clustering in the app is the output of <strong>transparent rule-based logic</strong> with explicit weights you can read in the source code. Specifically:</p>
+      <ul>
+        <li><strong>Headline sentiment</strong> (News page) — keyword-counting against fixed positive / negative dictionaries. Not an LLM, not a fine-tuned model. See <code>providers/news.py</code> for the exact word lists.</li>
+        <li><strong>Topic clustering</strong> (News page) — first-match dictionary lookup against fixed keyword sets. Not a clustering algorithm.</li>
+        <li><strong>Value / Momentum / Quality / Risk / Data Confidence scores</strong> — additive integer rules with explicit point weights documented in <code>calc/scoring.py</code> + the README + the in-app explainer drawers.</li>
+        <li><strong>Scenario recommendation (Buy / Watch / Avoid)</strong> — deterministic if/else logic over scores. Same inputs → same output. No probabilistic model.</li>
+      </ul>
+
+      <h3>Why this matters under the AI Act</h3>
+      <ul>
+        <li><strong>Article 3 — definition:</strong> "AI system" requires inference and adaptiveness based on objectives. Rule-based scoring with hand-crafted weights is excluded by Recital 12.</li>
+        <li><strong>Article 5 — prohibited practices:</strong> No applicability — we don't do social scoring, biometrics, manipulation, or law-enforcement profiling.</li>
+        <li><strong>Article 6 / Annex III — high-risk systems:</strong> No applicability — no credit-scoring, no employment, no critical infrastructure.</li>
+        <li><strong>Article 50 — transparency obligations:</strong> Although not required since no AI system is used, we voluntarily disclose every heuristic on the explainer drawers ("?" buttons next to every metric / score) to maintain auditability.</li>
+        <li><strong>Article 22 GDPR — automated decision-making:</strong> The "Buy / Watch / Avoid" recommendation is informational only. It does not produce legal effects on you, and you remain free to ignore or override it. This is not Article-22 ADM.</li>
+      </ul>
+
+      <h3>Will this change in future versions?</h3>
+      <p>If a future version ever introduces an actual AI system (e.g. an LLM-summarised news digest), this notice will be revised <strong>before</strong> shipping. Current PRD constraint forbids paid AI APIs; any local LLM addition would arrive with full Article 50 transparency labelling, output flagging, and an opt-out.</p>
+    </div>
+
+    <h2>Security</h2>
+
+    <div class="card">
+      <p>For security details + threat model see <a href="https://github.com/vikramraviprolu-code/Global-Stock-Analyser/blob/main/SECURITY.md" target="_blank" rel="noopener">SECURITY.md</a>. Highlights:</p>
+      <ul>
+        <li>HTTPS via mkcert local Certificate Authority (no self-signed warnings)</li>
+        <li>Bind to <code>127.0.0.1</code> by default — no LAN exposure</li>
+        <li>Strict <code>Host</code>-header allow-list rejects unknown hostnames</li>
+        <li>CSRF protection on every state-changing endpoint (<code>/api/shutdown</code>, <code>/api/settings/clear-cache</code>) via Origin / Referer + loopback check</li>
+        <li><code>X-Frame-Options DENY</code>, strict <code>Content-Security-Policy</code>, <code>X-Content-Type-Options nosniff</code>, <code>Referrer-Policy no-referrer</code>, restrictive <code>Permissions-Policy</code></li>
+        <li>Multi-source price verification (Stooq + yfinance cross-validation) earns a green ✓ badge when both agree</li>
+        <li>Server header replaced with <code>EquityScope</code> — no Werkzeug version banner</li>
+        <li>Coordinated vulnerability disclosure via <a href="/.well-known/security.txt">/.well-known/security.txt</a> (RFC 9116)</li>
+        <li>Self-hosted vendor JS (Lightweight Charts) with Subresource Integrity hashing</li>
+      </ul>
+    </div>
+
+    <h2>Disclaimer (always shown)</h2>
+
+    <div class="card">
+      <p>EquityScope is provided <strong>as-is, for informational and educational purposes only</strong>. Free-source market data may be delayed, incomplete, adjusted, stale, or unavailable. Indicators, scores, and recommendations are heuristic — never use any single signal in isolation. <strong>Not financial advice.</strong> Investors should verify all data independently or consult a qualified financial adviser before making investment decisions.</p>
+    </div>
+
+    <p class="muted" style="text-align: center; font-size: 12px; margin-top: 24px;">
+      Questions? Open an issue at
+      <a href="https://github.com/vikramraviprolu-code/Global-Stock-Analyser/issues" target="_blank" rel="noopener">github.com/vikramraviprolu-code/Global-Stock-Analyser/issues</a>.
+    </p>
+  </section>
+</main>
+
+</body>
+</html>

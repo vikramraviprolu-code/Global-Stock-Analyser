@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style](https://img.shields.io/badge/code%20style-pep8-orange.svg)](https://peps.python.org/pep-0008/)
 [![Tests](https://img.shields.io/badge/tests-134%20passing-brightgreen.svg)]()
-[![Version](https://img.shields.io/badge/version-0.19.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.20.0-blue.svg)](CHANGELOG.md)
 
 Free, no-API-key, open-source equity research platform. Discover stocks via a
 filterable Screener, drill into a full 8-tab Stock Analysis page, manage local
@@ -20,6 +20,24 @@ Inspired by TradingView, FINVIZ, Koyfin, Simply Wall St, and StockAnalysis.com
 — but **free / no API keys / no scraping by default**.
 
 ---
+
+## What's new in v0.20.0
+
+**Risk profiler + GDPR + EU AI Act compliance + security hardening:**
+
+- **`/risk-profile`** — 10-question self-assessment scored 0–100,
+  bucketed Conservative → Aggressive. Persisted locally; tunes
+  recommendation thresholds.
+- **`/privacy`** — full GDPR + EU AI Act disclosure. Article 6 lawful
+  basis, Articles 15–22 data subject rights, international transfers,
+  voluntary AI Act Art. 50 transparency despite non-applicability.
+- **Consent banner** — first-visit; Decline wipes every `equityscope.*`
+  localStorage key (Art. 21 right to object).
+- **Subresource Integrity** on the self-hosted Lightweight Charts vendor
+  bundle (SHA-384 + `crossorigin="anonymous"`).
+- **`/.well-known/security.txt`** (RFC 9116) for coordinated
+  vulnerability disclosure.
+- New SECURITY.md "Threat model" section.
 
 ## What's new in v0.19.0
 

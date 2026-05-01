@@ -305,6 +305,29 @@ def news_page():
     return render_template("news.html")
 
 
+@app.route("/risk-profile")
+def risk_profile_page():
+    return render_template("risk_profile.html")
+
+
+@app.route("/privacy")
+def privacy_page():
+    return render_template("privacy.html")
+
+
+@app.route("/.well-known/security.txt")
+def security_txt():
+    """RFC 9116 security.txt — coordinated vulnerability disclosure pointer."""
+    body = (
+        "Contact: https://github.com/vikramraviprolu-code/Global-Stock-Analyser/issues\n"
+        "Expires: 2027-01-01T00:00:00.000Z\n"
+        "Preferred-Languages: en\n"
+        "Canonical: https://Global-Stock-Analyser/Local/.well-known/security.txt\n"
+        "Policy: https://github.com/vikramraviprolu-code/Global-Stock-Analyser/blob/main/SECURITY.md\n"
+    )
+    return body, 200, {"Content-Type": "text/plain; charset=utf-8"}
+
+
 # ----- v2 API ----------------------------------------------------------------
 
 @app.route("/api/screener/presets")
@@ -557,7 +580,7 @@ def api_server_info():
     import sys
     cache_stats = _universe_service._enriched_cache.stats()
     return jsonify({
-        "version": "0.19.0",
+        "version": "0.20.0",
         "python": sys.version.split()[0],
         "platform": platform.platform(),
         "url_prefix": URL_PREFIX or "/",

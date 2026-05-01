@@ -8,10 +8,13 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='screener.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='analysis.css') }}">
 <script src="{{ url_for('static', filename='ui.js') }}"></script>
+<script src="{{ url_for('static', filename='consent.js') }}"></script>
 <script src="{{ url_for('static', filename='explainer.js') }}"></script>
 <script src="{{ url_for('static', filename='watchlist.js') }}"></script>
 <script src="{{ url_for('static', filename='portfolio.js') }}"></script>
-<script src="{{ url_for('static', filename='vendor/lightweight-charts.standalone.production.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/lightweight-charts.standalone.production.js') }}"
+        integrity="sha384-OK7vELvjHdhUFi31JYioPIcRHTROLdcDa6ZsNWgvgLaKj+9JqhU0Ad8g4wz3CXjA"
+        crossorigin="anonymous"></script>
 </head>
 <body>
 {% set active_page = 'analysis' %}

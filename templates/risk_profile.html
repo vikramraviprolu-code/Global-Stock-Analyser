@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Risk Profile — EquityScope</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='screener.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='analysis.css') }}">
+<script src="{{ url_for('static', filename='ui.js') }}"></script>
+<script src="{{ url_for('static', filename='consent.js') }}"></script>
+<script src="{{ url_for('static', filename='explainer.js') }}"></script>
+<script src="{{ url_for('static', filename='risk_profile.js') }}"></script>
+</head>
+<body>
+{% set active_page = 'risk-profile' %}
+{% include '_nav.html' %}
+
+<main class="screener-shell" id="main" style="grid-template-columns: 1fr;">
+  <section class="results-panel">
+    <header class="results-header">
+      <div>
+        <h1>Risk Profile</h1>
+        <p class="muted">A 10-question self-assessment used to tune Recommendation thresholds across the app. Answers stay in this browser only.</p>
+      </div>
+      <div class="rh-toolbar">
+        <button class="btn-ghost" id="rp-clear" aria-label="Clear stored profile">↻ Reset profile</button>
+      </div>
+    </header>
+
+    <div id="rp-current" class="card hidden"></div>
+
+    <div class="card">
+      <h2>Questionnaire</h2>
+      <form id="rp-form" autocomplete="off"></form>
+      <div style="display: flex; gap: 10px; margin-top: 12px;">
+        <button id="rp-submit" class="btn-primary" type="button">Calculate my profile</button>
+        <span id="rp-progress" class="muted" style="font-size: 12px; align-self: center;"></span>
+      </div>
+    </div>
+
+    <div id="rp-result" class="card hidden"></div>
+
+    <p class="disclaimer">
+      <strong>Self-assessment only.</strong> Risk tolerance is personal + situational —
+      this is a starting heuristic, not a substitute for a qualified financial
+      adviser. Answers are stored in this browser only and never transmitted.
+      <strong>Not financial advice.</strong>
+    </p>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+function render() {
+  const existing = RiskProfile.get();
+  const form = $("rp-form");
+  form.innerHTML = RiskProfile.QUESTIONS.map((q, qi) => {
+    return `<div class="rp-question">
+      <div class="rp-q-text"><strong>${qi + 1}.</strong> ${q.text}</div>
+      <div class="rp-q-options">
+        ${q.options.map((opt, oi) => `
+          <label class="rp-option">
+            <input type="radio" name="${q.id}" value="${oi}"
+              ${existing && existing.answers[q.id] === oi ? "checked" : ""}>
+            <span>${opt.label}</span>
+          </label>`).join("")}
+      </div>
+    </div>`;
+  }).join("");
+
+  if (existing && existing.bucket) {
+    renderCurrent(existing);
+  } else {
+    $("rp-current").classList.add("hidden");
+  }
+  updateProgress();
+  form.addEventListener("change", updateProgress);
+}
+
+function updateProgress() {
+  const answers = collectAnswers();
+  const filled = Object.values(answers).filter((v) => v != null).length;
+  const total = RiskProfile.QUESTIONS.length;
+  $("rp-progress").textContent = `${filled} of ${total} answered`;
+  $("rp-submit").disabled = filled < total;
+}
+
+function collectAnswers() {
+  const answers = {};
+  RiskProfile.QUESTIONS.forEach((q) => {
+    const sel = document.querySelector(`input[name="${q.id}"]:checked`);
+    answers[q.id] = sel ? parseInt(sel.value) : null;
+  });
+  return answers;
+}
+
+function renderCurrent(profile) {
+  $("rp-current").classList.remove("hidden");
+  const b = profile.bucket;
+  $("rp-current").innerHTML = `
+    <h2>Your current profile</h2>
+    <div class="rp-bucket-card rp-${b.key}">
+      <div class="rp-bucket-label">${b.label}</div>
+      <div class="rp-bucket-score">Score: <strong>${profile.score}/100</strong></div>
+      <p class="rp-bucket-desc">${b.desc}</p>
+      <div class="muted" style="font-size:11px; margin-top: 6px;">Last updated: ${new Date(profile.completedAt).toLocaleString()}</div>
+    </div>`;
+}
+
+$("rp-submit").onclick = () => {
+  const answers = collectAnswers();
+  if (Object.values(answers).filter((v) => v != null).length < RiskProfile.QUESTIONS.length) {
+    UI.toast("Answer all questions first.", { type: "warning" });
+    return;
+  }
+  const state = RiskProfile.save(answers);
+  renderCurrent(state);
+  // Result detail card
+  $("rp-result").classList.remove("hidden");
+  $("rp-result").innerHTML = `
+    <h2>How this affects the app</h2>
+    <ul style="font-size:13px; line-height:1.7; padding-left: 18px;">
+      <li><strong>Recommendation thresholds</strong> — Conservative profiles need stronger value + lower risk before "Buy"; Aggressive profiles tolerate higher RSI / risk score.</li>
+      <li><strong>Screener defaults</strong> — Conservative profiles get the "Quality Large Caps" preset suggested first; Aggressive profiles see "Momentum Leaders".</li>
+      <li><strong>Allocation guard-rails</strong> — Portfolio page warns if any single holding exceeds your stated max-concentration percent.</li>
+      <li><strong>Visible only to you</strong> — Profile is stored in this browser; never transmitted, never shared.</li>
+    </ul>
+    <p class="muted" style="font-size:12px; margin-top: 8px;">
+      Re-take this questionnaire any time as your circumstances change.
+    </p>`;
+  UI.toast(`Profile saved: ${state.bucket.label} (${state.score}/100)`, { type: "success" });
+};
+
+$("rp-clear").onclick = () => {
+  if (!confirm("Reset your saved risk profile?")) return;
+  RiskProfile.clear();
+  $("rp-current").classList.add("hidden");
+  $("rp-result").classList.add("hidden");
+  document.querySelectorAll('input[type="radio"]').forEach((r) => (r.checked = false));
+  updateProgress();
+  UI.toast("Profile reset.", { type: "success" });
+};
+
+render();
+</script>
+</body>
+</html>

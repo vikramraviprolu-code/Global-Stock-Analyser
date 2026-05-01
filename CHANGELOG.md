@@ -4,6 +4,64 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.20.0] - 2026-05-01
+
+### Added — Risk profiler + GDPR + EU AI Act compliance + security hardening
+
+**Risk profiler** (PRD Build Step 12)
+- `static/risk_profile.js` — 10-question questionnaire, scored 0–100,
+  bucketed into Conservative / Moderate / Balanced Growth / Growth /
+  Aggressive.
+- `templates/risk_profile.html` — questionnaire UI with progress
+  indicator, current-bucket card, "How this affects the app"
+  explanation, reset action.
+- Persisted in `localStorage["equityscope.riskProfile"]`.
+- `RiskProfile.QUESTIONS / BUCKETS / save / get / clear / bucketFor /
+  currentBucket()` exposed on `window`.
+- Workspace nav group: Watchlists · Portfolio · Alerts · Risk Profile.
+
+**GDPR / UK GDPR compliance**
+- `templates/privacy.html` — full privacy + compliance disclosure page.
+  Documents Article 6 lawful basis (consent + ePrivacy essential),
+  Articles 15–22 data subject rights with self-service mappings,
+  international transfers, no DPO required (Art. 37), no children's
+  data flow (Art. 8 not triggered).
+- `static/consent.js` — first-visit consent banner. Explicit Accept
+  records the decision; Decline wipes every `equityscope.*` localStorage
+  key (Art. 21 right to object).
+- "What gets stored, where" table covers every localStorage key + the
+  in-memory server cache TTLs.
+
+**EU AI Act compliance** (Regulation 2024/1689)
+- Privacy page declares EquityScope contains **no AI system per Art. 3**
+  — no ML model, no LLM, no neural network, no remote AI API.
+- All "AI-like" features (headline sentiment, topic clustering, scoring,
+  scenario recommendation) are documented as deterministic rule-based
+  logic with explicit weights — sources cited (`providers/news.py`,
+  `calc/scoring.py`).
+- Voluntary Article-50-style transparency: every metric / score / formula
+  surfaces in the explainer drawers (v0.19.0).
+- No Article-22 automated decision-making: recommendations are
+  informational only, with no legal effects on users.
+
+**Security hardening**
+- `/.well-known/security.txt` (RFC 9116) — coordinated disclosure
+  pointer with Contact / Expires / Policy / Canonical fields.
+- **Subresource Integrity** on the self-hosted Lightweight Charts
+  vendor bundle: SHA-384 `OK7vELvjHdhUFi31JYioPIcRHTROLdcDa6Zsng…`
+  + `crossorigin="anonymous"`.
+- New "Threat model" section in `SECURITY.md` covering each asset →
+  threat → mitigation.
+
+### Tests
+- `tests/test_compliance.py` — 14 cases. /risk-profile + /privacy +
+  /.well-known/security.txt routes; risk_profile.js exposes 10
+  questions and 5 buckets and full API; consent.js exposes required
+  methods and wipes storage on decline; consent.js loaded on every
+  page; SRI integrity attribute present and matches actual file
+  hash; privacy page declares no AI / rule-based.
+- All **190 tests pass** (was 177 in v0.19.0).
+
 ## [0.19.0] - 2026-05-01
 
 ### Added — Education / explainer drawers (PRD Build Step 11)

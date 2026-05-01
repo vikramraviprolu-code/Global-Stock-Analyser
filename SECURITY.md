@@ -2,7 +2,44 @@
 
 ## Supported versions
 
-Only the latest `main` branch receives security fixes. Pin a tagged release if you need stability. Latest: **v0.19.0**.
+Only the latest `main` branch receives security fixes. Pin a tagged release if you need stability. Latest: **v0.20.0**.
+
+## Coordinated disclosure
+
+`/.well-known/security.txt` (RFC 9116) points reporters to the GitHub issues
+tracker. Open an issue tagged `security` for any vulnerability — please do
+NOT include a working PoC in a public issue title. Maintainers will respond
+within 7 days for in-scope reports.
+
+## Threat model (high-level)
+
+EquityScope ships as a single-tenant, browser-only application. The threat
+model is bounded by that:
+
+| Asset | Threat | Mitigation |
+| --- | --- | --- |
+| Local user data (watchlists / portfolio / alerts / prefs) | Cross-site read / write | Strict CSP `script-src 'self'`, `frame-ancestors 'none'`, no third-party scripts |
+| Server cache | Poisoning via attacker-controlled response | Provider URLs hard-coded; ticker input validated against `^[A-Z0-9]{1,12}(?:-[A-Z0-9]{1,4})?(?:\\.[A-Z]{1,4})?$` |
+| Vendor JS (Lightweight Charts) | Supply-chain swap on disk | Subresource Integrity (SHA-384) checked at load time |
+| `/api/shutdown` + `/api/settings/clear-cache` | CSRF kill / cache poisoning | Loopback peer + Origin/Referer allow-list (HTTP 403 otherwise) |
+| TLS local hostname | MITM | mkcert local CA installed in System keychain → green padlock; bind to 127.0.0.1 (no LAN) |
+| Server fingerprinting | Reconnaissance | `Server: EquityScope` overrides Werkzeug banner |
+
+Out of scope:
+- Multi-user threats (no auth, no sessions)
+- Persistent server-side storage (none — all caches are in-memory + restart-cleared)
+
+## Hardening applied in v0.20.0
+
+| Threat | Mitigation |
+| --- | --- |
+| **Vendor-JS supply-chain swap** | Subresource Integrity SHA-384 hash on `lightweight-charts.standalone.production.js`; `crossorigin="anonymous"`. |
+| **Coordinated disclosure friction** | `/.well-known/security.txt` (RFC 9116) advertises Contact / Expires / Policy / Canonical. |
+| **GDPR / ePrivacy compliance gap** | Consent banner on first visit; explicit "Decline" wipes every `equityscope.*` localStorage key; full Privacy & Compliance page documents Article 6 lawful basis, Articles 15–22 data subject rights, international transfers, and a self-service erasure path. |
+| **EU AI Act transparency** | Privacy page documents that EquityScope contains no AI system per Art. 3 (no ML, no LLM, no neural net); "AI-like" features (sentiment, scoring, recommendation) are deterministic rule-based heuristics with weights documented in source + explainer drawers. Voluntary Article-50-style transparency despite non-applicability. |
+| **Auditability of heuristics** | "?" explainer drawers across the app surface every metric / score / formula; source URLs cited; caveats called out — supports both Art. 22 GDPR (right to explanation) and AI-Act-style transparency expectations. |
+
+
 
 ## Reporting a vulnerability
 
