@@ -153,7 +153,12 @@ def _security_headers(resp):
     # HSTS intentionally NOT set: this app uses a self-signed cert for a local
     # hostname. HSTS would lock the browser into refusing the cert without any
     # bypass option (chrome://net-internals/#hsts to clear). Keep TLS, drop HSTS.
-    if request.path.startswith("/static") or request.path in ("/", "/app"):
+    # Apply strict CSP to every HTML response (v0.23.0 — extended from
+    # the original v0.3.0 list of 3 routes). JSON / static asset
+    # responses don't render markup, so CSP is a no-op there but the
+    # browser still respects the headers if served.
+    ct = resp.headers.get("Content-Type", "")
+    if ct.startswith("text/html") or request.path.startswith("/static"):
         resp.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline'; "
@@ -359,7 +364,7 @@ def security_txt():
     """RFC 9116 security.txt — coordinated vulnerability disclosure pointer."""
     body = (
         "Contact: https://github.com/vikramraviprolu-code/Global-Stock-Analyser/issues\n"
-        "Expires: 2027-01-01T00:00:00.000Z\n"
+        "Expires: 2027-05-02T00:00:00.000Z\n"
         "Preferred-Languages: en\n"
         "Canonical: https://Global-Stock-Analyser/Local/.well-known/security.txt\n"
         "Policy: https://github.com/vikramraviprolu-code/Global-Stock-Analyser/blob/main/SECURITY.md\n"
@@ -619,7 +624,7 @@ def api_server_info():
     import sys
     cache_stats = _universe_service._enriched_cache.stats()
     return jsonify({
-        "version": "0.22.1",
+        "version": "0.23.0",
         "python": sys.version.split()[0],
         "platform": platform.platform(),
         "url_prefix": URL_PREFIX or "/",

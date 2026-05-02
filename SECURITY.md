@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Only the latest `main` branch receives security fixes. Pin a tagged release if you need stability. Latest: **v0.22.1**.
+Only the latest `main` branch receives security fixes. Pin a tagged release if you need stability. Latest: **v0.23.0**.
 
 ## Coordinated disclosure
 
@@ -40,6 +40,28 @@ Out of scope:
 | **Auditability of heuristics** | "?" explainer drawers across the app surface every metric / score / formula; source URLs cited; caveats called out — supports both Art. 22 GDPR (right to explanation) and AI-Act-style transparency expectations. |
 
 
+
+## Dependency audit (pip-audit)
+
+`bash scripts/audit_dependencies.sh` runs `pip-audit` against
+`requirements.txt`. CI runs the same script on every push to `main`;
+a non-zero exit blocks merge.
+
+`audit/sbom-vX.Y.Z.txt` (`pip freeze`) and `audit/pip-audit-vX.Y.Z.json`
+(full vuln report) are committed at every release tag for an
+auditable trail.
+
+### Pending upstream fixes (no patched release on PyPI yet)
+
+| GHSA | Package | Constraint | Status |
+|------|---------|------------|--------|
+| GHSA-gc5v-m9x4-r6x2 | `requests` < 2.33.0 | Fix announced, not yet released on PyPI | Reviewed 2026-05-02. Outbound HTTP only, no user-controlled URLs reach `requests`. Re-check at next release. |
+| GHSA-qw2m-4pqf-rmpp | `curl-cffi` < 0.15.0 | Fix announced, not yet released on PyPI | Reviewed 2026-05-02. Transitive dep of `yfinance` only, no direct app use. Re-check at next release. |
+
+These are temporarily allow-listed in
+`scripts/audit_dependencies.sh::AUDIT_IGNORE`. Drop the entry the
+moment the fix lands on PyPI. `bash scripts/audit_dependencies.sh
+--strict` ignores the allow-list and surfaces every CVE.
 
 ## Reporting a vulnerability
 

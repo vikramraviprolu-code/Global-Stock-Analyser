@@ -3,8 +3,8 @@
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style](https://img.shields.io/badge/code%20style-pep8-orange.svg)](https://peps.python.org/pep-0008/)
-[![Tests](https://img.shields.io/badge/tests-224%20passing-brightgreen.svg)]()
-[![Version](https://img.shields.io/badge/version-0.22.1-blue.svg)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-245%20passing-brightgreen.svg)]()
+[![Version](https://img.shields.io/badge/version-0.23.0-blue.svg)](CHANGELOG.md)
 
 Free, no-API-key, open-source equity research platform. Discover stocks via a
 filterable Screener, drill into a full 8-tab Stock Analysis page, manage local
@@ -20,6 +20,37 @@ Inspired by TradingView, FINVIZ, Koyfin, Simply Wall St, and StockAnalysis.com
 — but **free / no API keys / no scraping by default**.
 
 ---
+
+## What's new in v0.23.0
+
+**1.0 readiness — six release gates closed.**
+
+- **Strict CSP on every HTML route** — `Content-Security-Policy` was
+  only attached to `/` and `/app` since v0.3.0. v0.23.0 widens the
+  after-request hook to cover all 15 user-facing routes (caught by the
+  new render-smoke suite).
+- **Render-smoke suite (`tests/test_render_smoke.py`)** — every
+  user-facing route hit through Flask's test_client; asserts HTTP 200,
+  HTML content-type, expected landmark, alerts.js wiring, CSP / XFO /
+  Server-Timing headers. 21 new tests.
+- **`scripts/check_bundle_sizes.sh`** — enforces the v0.23.0 JS / CSS
+  budgets from `PERFORMANCE.md`. Wired into CI (`bundle-budgets` job).
+- **`scripts/audit_dependencies.sh` + `audit/` directory** — `pip-audit`
+  on every push (`dependency-audit` CI job); SBOM
+  (`audit/sbom-v0.23.0.txt`) and full vuln report
+  (`audit/pip-audit-v0.23.0.json`) committed at every release tag.
+  Two pending upstream CVEs documented in SECURITY.md with rationale.
+- **`security.txt` Expires** rolled forward to 2027-05-02 (RFC 9116
+  one-year max). Test gate ensures it never lapses again.
+- **`INSTALL_AUDIT.md`** — clean-machine reproducibility checklist
+  covering pre-flight, install, first-launch, smoke tour, security
+  headers, uninstall.
+- **PERFORMANCE.md** updated for the v0.22.0 global `alerts.js`
+  injection and v0.22.1 chip CSS — per-page weight table added.
+- **245 tests passing** (up from 224).
+
+This release does NOT add user-visible features — it closes the
+remaining gates between v0.22.1 and a credible **v1.0.0** tag.
 
 ## What's new in v0.22.1
 

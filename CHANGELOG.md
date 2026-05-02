@@ -4,6 +4,108 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [0.23.0] - 2026-05-02
+
+### Added — 1.0 readiness: CSP coverage, render-smoke, bundle / dep audits
+
+This release closes the six release gates identified between v0.22.1
+and a credible v1.0.0 tag. No user-visible features. No API changes.
+Backward-compatible.
+
+**1. Strict CSP on every HTML route.**
+The after-request hook in `app.py` was attaching
+`Content-Security-Policy` only to `/`, `/app`, and `/static/*` since
+v0.3.0 — leaving 13 other user-facing routes uncovered. v0.23.0
+inspects the response `Content-Type` instead and applies the same
+strict policy (`default-src 'self'; script-src 'self'
+'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self'
+data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self';
+form-action 'self'`) to every text/html response. Caught by the new
+render-smoke suite.
+
+**2. Render-smoke suite (`tests/test_render_smoke.py`).**
+21 new tests:
+- 15 parametrised checks (every user-facing route returns HTTP 200,
+  text/html content-type, expected landmark string, and — where the
+  v0.22.0 wire-up promised — `alerts.js` referenced in the body).
+- Security-header gates: CSP `script-src 'self'` and `frame-ancestors
+  'none'` on every HTML route, `X-Frame-Options: DENY`,
+  `Server-Timing: app;dur=` (v0.21.0 commitment).
+- `security.txt` RFC 9116 fields (`Contact`, `Expires`, `Canonical`,
+  `Policy`) all present.
+- `Expires` parsed and asserted in the future — failsafe so the
+  contact field never lapses silently.
+- Favicon route serves SVG.
+
+**3. Bundle-size budget CI gate.**
+`scripts/check_bundle_sizes.sh` parses every JS / CSS asset against
+the v0.23.0 budgets defined in `PERFORMANCE.md`. New `bundle-budgets`
+job in `.github/workflows/ci.yml` runs it on every push. Three
+budgets bumped to reflect post-v0.22.1 reality (analysis.css,
+screener.css, portfolio.js) — drift was silent before this gate.
+
+**4. Dependency audit + SBOM in CI.**
+- `scripts/audit_dependencies.sh` runs `pip-audit -r requirements.txt`
+  with an explicit allow-list for upstream CVEs that have no PyPI fix
+  available yet (currently 2: `requests` GHSA-gc5v-m9x4-r6x2,
+  `curl-cffi` GHSA-qw2m-4pqf-rmpp). `--strict` ignores the allow-list
+  and surfaces every CVE.
+- `audit/sbom-v0.23.0.txt` (`pip freeze`) and
+  `audit/pip-audit-v0.23.0.json` (full report) committed for an
+  auditable trail.
+- New `dependency-audit` CI job runs on every push.
+- Both pending CVEs documented in `SECURITY.md` with use-case rationale
+  (outbound HTTP only, no user-controlled URLs reach `requests`;
+  `curl-cffi` is a transitive dep of `yfinance`, no direct app use).
+
+**5. `security.txt` Expires rolled forward.**
+RFC 9116 sets a maximum 1-year window on `Expires`. The previous
+field (2027-01-01, set at v0.20.0) was within the window but unverified
+by tests. v0.23.0:
+- Rolls Expires forward to 2027-05-02 (one year from the v0.23.0
+  ship date).
+- Adds `test_security_txt_expires_not_in_past` to the render-smoke
+  suite. Any future release with a lapsed Expires fails CI before push.
+
+**6. Clean-machine install audit checklist.**
+`INSTALL_AUDIT.md` is a reproducibility contract for verifying a
+fresh-host install works end-to-end. Covers pre-flight cleanup,
+install steps, first-launch checks across Chrome / Safari / Firefox,
+smoke tour of all 12 user-facing pages, security-header verification
+via `curl`, and uninstall. Issues filed against the checklist itself
+are explicitly invited.
+
+### Tests
+
+Total: **245 passing** (up from 224).
+- `tests/test_render_smoke.py` — 21 new tests (route renders + security
+  headers + favicon + RFC 9116 Expires).
+
+### Docs
+
+- `README.md` — version badge -> 0.23.0, test count -> 245, new "What's
+  new in v0.23.0" section.
+- `SECURITY.md` — `Latest: **v0.23.0**`, new dependency-audit section
+  with the two pending GHSA entries.
+- `PERFORMANCE.md` — bundle budgets refreshed to v0.23.0 reality;
+  per-page weight table added documenting the v0.22.0 global
+  `alerts.js` injection.
+- `CHANGELOG.md` — this entry.
+- `INSTALL_AUDIT.md` — new file.
+- `pyproject.toml` + `app.py /api/settings/server-info` -> 0.23.0.
+
+### Compatibility
+
+- Pure hardening + audit release. No API changes. No localStorage
+  changes. No UI changes.
+- One behaviour change: HTML routes outside `/` + `/app` now carry CSP
+  headers they didn't before. Browsers that loaded a third-party
+  inline script on those pages would have done so silently — now
+  blocked. Project's own templates use only inline scripts under
+  `script-src 'self' 'unsafe-inline'`, so no breakage.
+
+---
+
 ## [0.22.1] - 2026-05-02
 
 ### Added — Bucket chip on Recommendation tab

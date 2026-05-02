@@ -48,3 +48,30 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate version pins are in sync
         run: bash scripts/check_version_sync.sh
+
+  bundle-budgets:
+    # Enforce JS / CSS bundle size budgets from PERFORMANCE.md.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate bundle sizes
+        run: bash scripts/check_bundle_sizes.sh
+
+  dependency-audit:
+    # Runs pip-audit against requirements.txt. Pending upstream CVEs
+    # (no PyPI fix yet) are allow-listed in scripts/audit_dependencies.sh
+    # — drop entries when patched releases land. See SECURITY.md.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install pip-audit + project deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pip-audit
+      - name: Run dependency audit
+        run: bash scripts/audit_dependencies.sh

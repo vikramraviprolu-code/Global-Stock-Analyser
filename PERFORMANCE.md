@@ -5,18 +5,41 @@ measurements are taken on a local-loopback dev server unless noted.
 
 ## JavaScript bundle budgets
 
-| Bundle | Size budget | Actual (v0.21.0) | Notes |
+Measured at v0.23.0 with `wc -c static/*.js`. Budgets enforced as the
+project's own commitment — drift is reviewed at every release.
+
+| Bundle | Size budget | Actual (v0.23.0) | Notes |
 | --- | ---: | ---: | --- |
-| `static/ui.js` | ≤ 6 KB | ~5 KB | Skeletons + toast + fetchWithRetry |
-| `static/format.js` | ≤ 5 KB | ~4 KB | Shared formatters (extracted v0.21.0) |
-| `static/consent.js` | ≤ 3 KB | ~2 KB | GDPR banner |
-| `static/explainer.js` | ≤ 25 KB | ~22 KB | 40+ topic content registry |
-| `static/watchlist.js` | ≤ 4 KB | ~3 KB | localStorage CRUD |
-| `static/portfolio.js` | ≤ 6 KB | ~5 KB | localStorage CRUD + valuate() |
-| `static/alerts.js` | ≤ 14 KB | ~13 KB | Rule engine + visibility-aware poller |
-| `static/risk_profile.js` | ≤ 4 KB | ~3 KB | Questionnaire + bucket logic |
+| `static/ui.js` | ≤ 7 KB | 6.3 KB | Skeletons + toast + fetchWithRetry |
+| `static/format.js` | ≤ 6 KB | 5.9 KB | Shared formatters (extracted v0.21.0) |
+| `static/consent.js` | ≤ 4 KB | 3.8 KB | GDPR banner |
+| `static/explainer.js` | ≤ 25 KB | 21.6 KB | 40+ topic content registry |
+| `static/watchlist.js` | ≤ 4 KB | 3.7 KB | localStorage CRUD + CSV/JSON export (v0.22.0) |
+| `static/portfolio.js` | ≤ 7 KB | 6.5 KB | localStorage CRUD + valuate() |
+| `static/alerts.js` | ≤ 14 KB | 13.3 KB | Rule engine + visibility-aware poller (loads on every page from v0.22.0) |
+| `static/risk_profile.js` | ≤ 6 KB | 5.6 KB | Questionnaire + bucket logic |
 | `static/vendor/lightweight-charts.standalone.production.js` | ≤ 200 KB | 160 KB | Self-hosted, SHA-384 SRI |
-| **Total per page (avg)** | **≤ 30 KB own + 160 KB vendor on /app only** | **~26 KB + 160 KB on /app** | Vendor only loaded on Stock Analysis |
+
+### Per-page weight (own JS only — excludes vendor + cached assets)
+
+`alerts.js` is now injected on every user-facing template (v0.22.0
+wire-up release) so the visibility-aware poller runs site-wide. The
+per-page totals reflect this:
+
+| Page | Own JS (sum) | Vendor JS | Notes |
+| --- | ---: | ---: | --- |
+| `/screener` | ~36 KB | — | ui + format + consent + explainer + watchlist + alerts |
+| `/app` (Stock Analysis) | ~37 KB | 160 KB | Same as above + lightweight-charts |
+| `/watchlists` | ~33 KB | — | + watchlist + portfolio + alerts |
+| `/portfolio` | ~36 KB | — | + portfolio + alerts |
+| `/alerts` | ~36 KB | — | + alerts + format + ui |
+| `/risk-profile` | ~26 KB | — | risk_profile + alerts + consent + explainer |
+| `/privacy`, `/sources`, `/data-quality`, `/news`, `/events`, `/compare`, `/settings` | ~26-32 KB | — | Each adds page-specific helpers + global alerts |
+
+Browsers cache identical script tags after the first hit, so the
+real network cost on second-page navigation is dominated by the HTML
+template itself (typically 8-30 KB). `alerts.js` is fetched once,
+served from cache on every subsequent page.
 
 **Why minify is deferred:** the entire app's own JS sums to ~50 KB
 unminified — gzip on the wire (next iteration) brings this under 15 KB.
@@ -25,12 +48,12 @@ scale.
 
 ## CSS bundle budgets
 
-| Bundle | Size budget | Actual | Notes |
+| Bundle | Size budget | Actual (v0.23.0) | Notes |
 | --- | ---: | ---: | --- |
-| `style.css` | ≤ 6 KB | ~5 KB | Base tokens + dark theme |
-| `screener.css` | ≤ 18 KB | ~16 KB | Screener + nav + skeletons + drawer |
-| `analysis.css` | ≤ 14 KB | ~12 KB | 8-tab analysis + scenario + portfolio + risk |
-| `landing.css` | ≤ 8 KB | ~7 KB | Marketing landing only |
+| `style.css` | ≤ 8 KB | 7.0 KB | Base tokens + dark theme |
+| `screener.css` | ≤ 26 KB | 24.5 KB | Screener + nav + skeletons + drawer |
+| `analysis.css` | ≤ 18 KB | 15.9 KB | 8-tab analysis + scenario + portfolio + risk + bucket chip (v0.22.1) |
+| `landing.css` | ≤ 10 KB | 9.7 KB | Marketing landing only |
 
 ## Server response-time budgets (loopback dev server)
 
