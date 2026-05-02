@@ -49,6 +49,7 @@ if (typeof window.APP_BASE === 'undefined') {
     <button id="compare-selected" class="btn-ghost">Compare selected</button>
     <button id="export-csv" class="btn-ghost" aria-label="Export current watchlist as CSV">↓ CSV</button>
     <button id="export-json" class="btn-ghost" aria-label="Export current watchlist as JSON">↓ JSON</button>
+    <button id="import-json" class="btn-ghost" aria-label="Import a watchlist JSON file">↑ Import JSON</button>
   </aside>
 
   <section class="results-panel">
@@ -91,6 +92,7 @@ if (typeof window.APP_BASE === 'undefined') {
 </main>
 
 <script src="{{ url_for('static', filename='watchlist.js') }}"></script>
+<script src="{{ url_for('static', filename='backup.js') }}"></script>
 <script>
 const APP_BASE = {{ request.script_root|tojson }};
 const $ = (id) => document.getElementById(id);
@@ -396,6 +398,54 @@ function exportWatchlist(fmt) {
 }
 $("export-csv").onclick = () => exportWatchlist("csv");
 $("export-json").onclick = () => exportWatchlist("json");
+
+async function importWatchlistFile() {
+  let picked;
+  try {
+    picked = await EsBackup.pickFile(".json,application/json");
+  } catch (e) { return; }
+  let parsed;
+  try {
+    parsed = JSON.parse(picked.text);
+  } catch (e) {
+    UI && UI.toast ? UI.toast("File is not valid JSON.", { type: "error" })
+                   : alert("File is not valid JSON.");
+    return;
+  }
+  const result = EsBackup.validateWatchlistImport(parsed);
+  if (!result.ok) {
+    UI && UI.toast ? UI.toast("Import failed: " + result.error, { type: "error" })
+                   : alert("Import failed: " + result.error);
+    return;
+  }
+  if (result.kind === "single") {
+    // Append to a new list (or merge into existing if name collides).
+    let target = result.name;
+    const existing = Watchlists.names();
+    if (existing.includes(target)) {
+      if (!confirm(`Watchlist "${target}" already exists. Merge ${result.tickers.length} ticker(s) into it?`)) return;
+      result.tickers.forEach((t) => Watchlists.add(t, target));
+    } else {
+      Watchlists.create(target);
+      result.tickers.forEach((t) => Watchlists.add(t, target));
+    }
+    Watchlists.setActive(target);
+    UI && UI.toast ? UI.toast(`Imported "${target}" (${result.tickers.length} tickers).`, { type: "success" })
+                   : alert(`Imported "${target}".`);
+  } else {
+    // Full state — confirm before replacing every list.
+    if (!confirm(`Replace all watchlists with the ${Object.keys(result.lists).length} from this file? This wipes existing lists.`)) return;
+    const state = { version: 1, watchlists: result.lists,
+                    active: result.active && result.lists[result.active]
+                            ? result.active : Object.keys(result.lists)[0] };
+    localStorage.setItem("equityscope.watchlists", JSON.stringify(state));
+    UI && UI.toast ? UI.toast(`Restored ${Object.keys(result.lists).length} watchlists.`, { type: "success" })
+                   : alert("Restored.");
+  }
+  renderTabs();
+  load();
+}
+$("import-json").onclick = importWatchlistFile;
 document.querySelectorAll(".vt-btn").forEach((b) =>
   b.onclick = () => {
     document.querySelectorAll(".vt-btn").forEach((x) => x.classList.remove("active"));

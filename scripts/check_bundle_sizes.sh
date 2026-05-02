@@ -20,6 +20,7 @@ declare -a CHECKS=(
   "static/portfolio.js|7168|portfolio.js (≤ 7 KB)"
   "static/alerts.js|14336|alerts.js (≤ 14 KB)"
   "static/risk_profile.js|6144|risk_profile.js (≤ 6 KB)"
+  "static/backup.js|10240|backup.js (≤ 10 KB)"
   "static/style.css|8192|style.css (≤ 8 KB)"
   "static/screener.css|26624|screener.css (≤ 26 KB)"
   "static/analysis.css|18432|analysis.css (≤ 18 KB)"

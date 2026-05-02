@@ -4,6 +4,111 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [1.2.0] - 2026-05-02
+
+### Added — Round-trip release: every kind of state can leave and return
+
+v0.22.0 shipped watchlist export. v1.2.0 closes the loop — every
+state collection now has both export AND import, plus a full
+"Backup all / Restore all / Wipe all" trio at `/privacy`.
+
+**1. `static/backup.js`** — shared module (8.4 KB, ≤ 10 KB budget):
+
+```
+EsBackup.TICKER_RE              // canonical ticker regex
+EsBackup.ES_KEYS                // all 8 equityscope.* keys
+EsBackup.BACKUP_VERSION = 1
+EsBackup.download(content, filename, mime)
+EsBackup.pickFile(accept) -> Promise<{name, text}>
+EsBackup.validateWatchlistImport(parsed)
+EsBackup.validateAlertsImport(parsed)
+EsBackup.validatePortfolioImport(parsed)
+EsBackup.backupAll() -> JSON string
+EsBackup.restoreAll(parsed) -> {ok, restored, skipped, error}
+```
+
+Validators enforce: ticker regex, per-kind size caps (200 tickers /
+50 lists / 500 holdings / 200 alerts), schema field presence, and
+silent dropping of malformed rows so a partial paste won't crash
+the import. Oversize payloads fail-closed with a clear error.
+
+**2. Watchlist import** — `↑ Import JSON` button on `/watchlists`.
+Two acceptance shapes:
+- **Single-list export** (the v0.22.0 `↓ JSON` output): merge into
+  existing list with confirmation OR create a new list under the
+  exported name.
+- **Full Watchlists state** (`{version, watchlists, active}`):
+  replace-all-lists with confirmation.
+
+**3. Alerts export + import** — `↓ Export` / `↑ Import` on
+`/alerts`. Export bundles every alert + the `pollMinutes` +
+`desktopNotifications` settings. Import offers merge (dedupe by
+`ticker+kind+threshold` composite key) OR full replace, both
+gated behind confirmation prompts.
+
+**4. Backup all / Restore all / Wipe all** — three buttons in a new
+"Your data" card on `/privacy`:
+- **Backup all** dumps every `equityscope.*` key into a single
+  schema-versioned JSON. No price data. No PII. Pure state.
+- **Restore all** reads the bundle, validates `schema:
+  "equityscope-backup"` + `version <= 1`, and overwrites every
+  matching key. Unknown keys are skipped (forward-compat).
+- **Wipe all** is the GDPR Article 17 right-to-erasure path —
+  removes every `equityscope.*` key with double confirmation.
+
+This closes a half-built loop from the v0.20.0 GDPR work — the
+Privacy page now has the practical buttons that match the
+Article 15-22 rights it documents.
+
+### Tests
+
+`tests/test_roundtrip.py` adds 24 tests:
+
+- 6 template / script presence checks (UI elements wired up
+  on watchlists, alerts, privacy).
+- 1 backup.js public API surface check (every documented export
+  is defined).
+- 1 ES_KEYS coverage check (every documented localStorage key is
+  in the bundle).
+- 7 validateWatchlistImport unit tests — happy path (single + full),
+  ticker stripping, garbage rejection, oversize cap.
+- 2 validateAlertsImport tests — happy path, garbage row stripping.
+- 4 backup-all schema tests — valid bundle, wrong schema, future
+  version, missing keys.
+- 2 round-trip contract tests — exported watchlist + alert payloads
+  validate cleanly through their corresponding importers.
+
+The schema validators are mirrored in Python in the test file and
+run as a contract pin against the JS source — drift between the two
+breaks the test, which is the point.
+
+Total: **269 tests passing** (up from 245).
+
+### Bundle budgets
+
+`scripts/check_bundle_sizes.sh` extended with a new entry:
+`static/backup.js` ≤ 10 KB. Current: 8.4 KB.
+
+### Docs
+
+- `README.md` — version badge -> 1.2.0, test count -> 269, "What's
+  new" section.
+- `SECURITY.md` — `Latest: **v1.2.0**`.
+- `PERFORMANCE.md` — added `backup.js` row to the JS bundle table.
+- This `CHANGELOG.md` entry.
+
+### Compatibility
+
+- **Backward-compatible.** No API changes, no localStorage schema
+  changes (validators accept the existing shapes), no UI removals.
+- v0.22.0 watchlist exports remain importable. Alerts in
+  localStorage are not mutated by simply loading the page.
+- Backup-bundle schema is versioned (`version: 1`) — future
+  schema changes will bump the version and `restoreAll` will
+  refuse to import a bundle from a future app version.
+
+---
+
 ## [1.1.0] - 2026-05-02
 
 ### Added — Distribution release: install on any platform

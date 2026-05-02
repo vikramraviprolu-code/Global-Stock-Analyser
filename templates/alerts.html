@@ -13,6 +13,7 @@
 <script src="{{ url_for('static', filename='consent.js') }}"></script>
 <script src="{{ url_for('static', filename='explainer.js') }}"></script>
 <script src="{{ url_for('static', filename='alerts.js') }}"></script>
+<script src="{{ url_for('static', filename='backup.js') }}"></script>
 </head>
 <body>
 {% set active_page = 'alerts' %}
@@ -40,6 +41,8 @@
           <input id="al-desktop" type="checkbox"> Desktop notifications
         </label>
         <button class="btn-ghost" id="al-test-poll" aria-label="Run a manual evaluation now">↻ Run now</button>
+        <button class="btn-ghost" id="al-export" aria-label="Export all alerts as JSON">↓ Export</button>
+        <button class="btn-ghost" id="al-import" aria-label="Import alerts from JSON">↑ Import</button>
       </div>
     </header>
 
@@ -159,6 +162,77 @@ $("al-desktop").onchange = async () => {
 $("al-test-poll").onclick = async () => {
   UI.toast("Polling now…", { type: "info", duration: 1500 });
   await Alerts.pollOnce();
+  render();
+};
+
+$("al-export").onclick = () => {
+  const list = Alerts.list();
+  if (!list.length) {
+    UI.toast("No alerts to export.", { type: "warning" });
+    return;
+  }
+  const payload = JSON.stringify({
+    schema: "equityscope-alerts",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    alerts: list,
+    pollMinutes: Alerts.pollMinutes(),
+    desktopNotifications: Alerts.desktopEnabled(),
+  }, null, 2);
+  EsBackup.download(payload, `alerts-${Date.now()}.json`, "application/json");
+  UI.toast(`Exported ${list.length} alert(s).`, { type: "success" });
+};
+
+$("al-import").onclick = async () => {
+  let picked;
+  try {
+    picked = await EsBackup.pickFile(".json,application/json");
+  } catch (e) { return; }
+  let parsed;
+  try { parsed = JSON.parse(picked.text); }
+  catch (e) {
+    UI.toast("File is not valid JSON.", { type: "error" });
+    return;
+  }
+  const result = EsBackup.validateAlertsImport(parsed);
+  if (!result.ok) {
+    UI.toast("Import failed: " + result.error, { type: "error" });
+    return;
+  }
+  const existing = Alerts.list();
+  const choice = existing.length
+    ? confirm(`Merge ${result.alerts.length} alert(s) into existing ${existing.length}? Cancel = replace all.`)
+    : true;
+  if (!choice && !confirm(`Replace ALL ${existing.length} existing alert(s) with the ${result.alerts.length} from this file?`)) {
+    return;
+  }
+  // Build new state
+  const state = Alerts.all();
+  if (choice) {
+    // merge: skip duplicates by ticker+kind+threshold
+    const seen = new Set(state.alerts.map((a) => `${a.ticker}|${a.kind}|${a.threshold}`));
+    let added = 0;
+    for (const a of result.alerts) {
+      const key = `${a.ticker}|${a.kind}|${a.threshold}`;
+      if (seen.has(key)) continue;
+      state.alerts.push({
+        id: a.id, ticker: a.ticker, kind: a.kind, threshold: a.threshold,
+        status: a.active === false ? "snoozed" : "active",
+        createdAt: new Date().toISOString(), notes: a.notes || "",
+      });
+      seen.add(key); added++;
+    }
+    localStorage.setItem("equityscope.alerts", JSON.stringify(state));
+    UI.toast(`Merged ${added} new alert(s) (${result.alerts.length - added} duplicate skipped).`, { type: "success" });
+  } else {
+    state.alerts = result.alerts.map((a) => ({
+      id: a.id, ticker: a.ticker, kind: a.kind, threshold: a.threshold,
+      status: a.active === false ? "snoozed" : "active",
+      createdAt: new Date().toISOString(), notes: a.notes || "",
+    }));
+    localStorage.setItem("equityscope.alerts", JSON.stringify(state));
+    UI.toast(`Replaced — now ${state.alerts.length} alert(s).`, { type: "success" });
+  }
   render();
 };
 

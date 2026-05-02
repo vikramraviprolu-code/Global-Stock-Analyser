@@ -18,6 +18,7 @@ project's own commitment — drift is reviewed at every release.
 | `static/portfolio.js` | ≤ 7 KB | 6.5 KB | localStorage CRUD + valuate() |
 | `static/alerts.js` | ≤ 14 KB | 13.3 KB | Rule engine + visibility-aware poller (loads on every page from v0.22.0) |
 | `static/risk_profile.js` | ≤ 6 KB | 5.6 KB | Questionnaire + bucket logic |
+| `static/backup.js` | ≤ 10 KB | 8.4 KB | Shared import / export / backup helpers (added v1.2.0) |
 | `static/vendor/lightweight-charts.standalone.production.js` | ≤ 200 KB | 160 KB | Self-hosted, SHA-384 SRI |
 
 ### Per-page weight (own JS only — excludes vendor + cached assets)

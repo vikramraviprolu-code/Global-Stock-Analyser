@@ -3,8 +3,8 @@
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style](https://img.shields.io/badge/code%20style-pep8-orange.svg)](https://peps.python.org/pep-0008/)
-[![Tests](https://img.shields.io/badge/tests-245%20passing-brightgreen.svg)]()
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-269%20passing-brightgreen.svg)]()
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](CHANGELOG.md)
 
 Free, no-API-key, open-source equity research platform. Discover stocks via a
 filterable Screener, drill into a full 8-tab Stock Analysis page, manage local
@@ -20,6 +20,26 @@ Inspired by TradingView, FINVIZ, Koyfin, Simply Wall St, and StockAnalysis.com
 — but **free / no API keys / no scraping by default**.
 
 ---
+
+## What's new in v1.2.0
+
+**Round-trip release — every kind of state can now leave and return.**
+
+- **Watchlist import** — pair to the v0.22.0 export. `↑ Import JSON`
+  on `/watchlists` accepts both single-list exports (merge or rename)
+  and full-state exports (replace-all with confirmation).
+- **Alerts export + import** — `↓ Export` / `↑ Import` on `/alerts`.
+  Import offers merge (dedupe by ticker+kind+threshold) or replace.
+- **Backup all + Restore all + Wipe all** — three buttons on
+  `/privacy` covering the GDPR Article 20 data-portability + Article
+  17 right-to-erasure paths in one click each. Backup file bundles
+  all 8 `equityscope.*` keys with schema versioning.
+- **`static/backup.js`** — shared module with file-pick / download /
+  validation primitives + ticker regex. Loaded on watchlists, alerts,
+  privacy. 8.4 KB, budget ≤ 10 KB.
+- **24 new tests** in `tests/test_roundtrip.py` covering schema
+  validation, ticker filtering, oversize caps, and round-trip
+  contract (export → import). Total: **269 passing**.
 
 ## What's new in v1.1.0
 

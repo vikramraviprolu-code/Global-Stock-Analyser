@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "global-stock-analyser"
-version = "1.1.0"
+version = "1.2.0"
 description = "Free, no-API-key global equity research dashboard with value/momentum screening"
 readme = "README.md"
 license = { file = "LICENSE" }

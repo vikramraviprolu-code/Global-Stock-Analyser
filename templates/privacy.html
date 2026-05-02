@@ -12,6 +12,7 @@
 <script src="{{ url_for('static', filename='format.js') }}"></script>
 <script src="{{ url_for('static', filename='consent.js') }}"></script>
 <script src="{{ url_for('static', filename='alerts.js') }}"></script>
+<script src="{{ url_for('static', filename='backup.js') }}"></script>
 <script>
 // alerts.js needs APP_BASE for its background poller. Set if not already.
 if (typeof window.APP_BASE === 'undefined') {
@@ -132,6 +133,24 @@ if (typeof window.APP_BASE === 'undefined') {
       </ul>
     </div>
 
+    <h2>Your data — backup, restore, erase</h2>
+
+    <div class="card">
+      <p>EquityScope keeps every preference in your browser only. Use these
+      controls to take a snapshot, restore one, or wipe everything.</p>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
+        <button id="bk-backup-all" class="btn-primary" aria-label="Download a backup of every EquityScope preference">↓ Backup all (JSON)</button>
+        <button id="bk-restore-all" class="btn-ghost" aria-label="Restore from a backup file">↑ Restore all</button>
+        <button id="bk-wipe-all" class="btn-ghost" style="color: var(--red);" aria-label="Permanently delete every EquityScope preference">✕ Wipe all data</button>
+      </div>
+      <p class="muted" style="font-size: 12px; margin-top: 8px;">
+        Backup file contains: watchlists, portfolio, alerts, custom presets,
+        UI prefs, column state, risk profile, consent. No price data —
+        backups are for state portability only.
+      </p>
+      <div id="bk-status" class="muted" style="font-size: 12px; margin-top: 8px;"></div>
+    </div>
+
     <h2>Disclaimer (always shown)</h2>
 
     <div class="card">
@@ -144,6 +163,66 @@ if (typeof window.APP_BASE === 'undefined') {
     </p>
   </section>
 </main>
+
+<script>
+// ---------- Backup all / Restore all / Wipe all (v1.2.0) ----------
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const status = (msg, cls) => {
+    const el = $("bk-status");
+    if (!el) return;
+    el.textContent = msg || "";
+    el.style.color = cls === "ok" ? "var(--green)" :
+                     cls === "err" ? "var(--red)" : "";
+  };
+
+  $("bk-backup-all").onclick = () => {
+    const json = EsBackup.backupAll();
+    const parsed = JSON.parse(json);
+    const keyCount = Object.keys(parsed.keys).length;
+    EsBackup.download(json, `equityscope-backup-${Date.now()}.json`, "application/json");
+    status(`Downloaded backup of ${keyCount} key(s).`, "ok");
+  };
+
+  $("bk-restore-all").onclick = async () => {
+    let picked;
+    try { picked = await EsBackup.pickFile(".json,application/json"); }
+    catch (e) { return; }
+    let parsed;
+    try { parsed = JSON.parse(picked.text); }
+    catch (e) {
+      status("File is not valid JSON.", "err");
+      return;
+    }
+    if (!confirm("Restore will OVERWRITE every EquityScope preference in this browser. Continue?")) {
+      return;
+    }
+    const result = EsBackup.restoreAll(parsed);
+    if (!result.ok) {
+      status("Restore failed: " + result.error, "err");
+      return;
+    }
+    status(`Restored ${result.restored.length} key(s) (${result.skipped.length} skipped). Reload to take effect.`, "ok");
+  };
+
+  $("bk-wipe-all").onclick = () => {
+    if (!confirm("PERMANENTLY delete every EquityScope preference in this browser? This cannot be undone.")) {
+      return;
+    }
+    if (!confirm("Last chance — this wipes watchlists, portfolio, alerts, presets, prefs, and risk profile. Backup first if unsure.")) {
+      return;
+    }
+    let removed = 0;
+    EsBackup.ES_KEYS.forEach((k) => {
+      if (localStorage.getItem(k) != null) {
+        localStorage.removeItem(k);
+        removed++;
+      }
+    });
+    status(`Wiped ${removed} key(s). Reload to see the change.`, "ok");
+  };
+})();
+</script>
 
 </body>
 </html>
