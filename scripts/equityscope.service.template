@@ -1,0 +1,41 @@
+[Unit]
+Description=EquityScope — global equity research dashboard
+Documentation=https://github.com/vikramraviprolu-code/Global-Stock-Analyser
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+Group=__GROUP__
+WorkingDirectory=__INSTALL_DIR__
+ExecStart=__INSTALL_DIR__/venv/bin/equityscope --host 127.0.0.1 --port 5050
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+
+# Hardening — same defaults as the macOS LaunchDaemon installer.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+ReadWritePaths=__INSTALL_DIR__
+
+# Loopback only — never bind LAN. SECURITY.md threat model assumes single-host.
+Environment="FLASK_ENV=production"
+Environment="PYTHONDONTWRITEBYTECODE=1"
+
+# Logs flow to journald — view with: journalctl -u equityscope -f
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

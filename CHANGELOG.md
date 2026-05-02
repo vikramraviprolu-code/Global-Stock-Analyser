@@ -4,6 +4,125 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [1.1.0] - 2026-05-02
+
+### Added — Distribution release: install on any platform
+
+v1.0.0 was the stability commitment. v1.1.0 closes the "any environment"
+install gap: macOS LaunchDaemon (existed at v1.0.0), Linux systemd
+(new), Docker via GHCR (new), pip install from clone (new console
+script). PyPI publish (`pip install global-stock-analyser`) deferred
+to v1.2.0 — needs a flat-layout → `equityscope/` package restructure.
+
+**1. GHCR Docker image with multi-arch CI publish.**
+- New workflow `.github/workflows/release.yml` builds and publishes
+  the existing `Dockerfile` to GitHub Container Registry on every push
+  to `main` and every pushed `v*.*.*` tag.
+- Multi-arch via QEMU + Buildx: `linux/amd64` + `linux/arm64`.
+- Tags: `latest` (latest tag only), `vX.Y.Z`, `vX.Y`, `vX`, branch
+  name, short SHA.
+- No DockerHub credentials needed — GHCR uses the auto-issued
+  `GITHUB_TOKEN`.
+- Pull: `docker pull ghcr.io/vikramraviprolu-code/global-stock-analyser:v1.1.0`.
+
+**2. Linux systemd installer + service unit.**
+- `scripts/install_systemd.sh` mirrors `scripts/install_daemon.sh`
+  (macOS) for Linux: stages the project at `/opt/equityscope/`,
+  creates a venv, installs deps + `waitress`, installs the project
+  in editable mode (registers the `equityscope` console script),
+  renders the service file from
+  `scripts/equityscope.service.template`, and `systemctl
+  enable --now`s it.
+- `scripts/uninstall_systemd.sh` removes the unit, `systemctl
+  daemon-reload`s, and wipes `/opt/equityscope/`.
+- Service-unit hardening: `NoNewPrivileges=true`,
+  `ProtectSystem=strict`, `ProtectHome=read-only`, `PrivateTmp=true`,
+  `ProtectKernelTunables=true`, `ProtectKernelModules=true`,
+  `MemoryDenyWriteExecute=true`, `RestrictNamespaces=true`,
+  `LockPersonality=true`, `SystemCallArchitectures=native`. Loopback-
+  only by design.
+- Logs flow to journald — `journalctl -u equityscope -f`.
+
+**3. `equityscope` console script + `cli.py`.**
+- New top-level `cli.py` with argparse-based entry. Exposed via
+  `[project.scripts]` in `pyproject.toml`.
+- Flags: `--host`, `--port`, `--tls-cert`, `--tls-key`,
+  `--url-prefix`, `--debug`, `--no-auto-shutdown`, `--version`,
+  `--help`.
+- Production server: Waitress (pure-Python, cross-platform — works
+  on Windows out of the box). The macOS LaunchDaemon path continues
+  to use gunicorn.
+- After `pip install -e .` from a clone, `equityscope` is on PATH.
+
+**4. `pyproject.toml` PyPI-readiness pass.**
+- New `[build-system]` block (PEP 517: setuptools >= 68 + wheel).
+- New `[project.scripts]` registering `equityscope = "cli:main"`.
+- New `[tool.setuptools]` block listing top-level py-modules
+  (`app`, `cli`, `analyzer`, `market_data`, `markets`, `models`,
+  `resolver`) and packages (`calc`, `providers`, `screener`).
+- New `[tool.setuptools.package-data]` shipping `*.csv`, `*.html`,
+  `*.css`, `*.js`, `*.svg`, `*.png`, `*.ico` alongside the wheel.
+- Status bumped: `Development Status :: 5 - Production/Stable`
+  (was `4 - Beta`).
+- Added classifiers for Python 3.13 and `Operating System :: OS
+  Independent`.
+- New deps:
+  - `waitress >= 3.0,<4.0` — cross-platform WSGI server.
+- Loosened: `yfinance >= 0.2.40` (was `<0.3` — installed reality is
+  `1.2.0` and the older constraint was a lie; v0.x and 1.x APIs we
+  use are stable).
+- Added project URLs: `Changelog`, `Security` (in addition to
+  `Homepage`, `Issues`).
+
+**5. Documentation: `INSTALL.md` + `USER_GUIDE.md`.**
+- `INSTALL.md` — comprehensive per-platform install guide:
+  - macOS LaunchDaemon (path #1) — green-padlock TLS, custom
+    hostname, autostart.
+  - Linux systemd (path #2) — hardened service unit, journald.
+  - Docker / GHCR (path #3) — multi-arch image, reverse-proxy
+    recipe for TLS via Caddy.
+  - pip from clone (path #4) — the `equityscope` CLI.
+  - Configuration reference (env vars), troubleshooting matrix,
+    upgrade procedures, uninstall procedures.
+- `USER_GUIDE.md` — 14-page feature walkthrough covering every route
+  (Landing, Screener, 8-tab Stock Analysis, Watchlists, Portfolio,
+  Compare, Events, News, Alerts, Risk Profile, Data Quality, Sources,
+  Settings, Privacy), daily workflows, keyboard shortcuts, data-
+  freshness reference, privacy + EU AI Act + GDPR compliance, and
+  glossary.
+
+### Tests
+
+Total: **245 passing** (no change vs v1.0.0). The new files are
+docs / install scripts / CLI / CI workflow — none change runtime
+behaviour observed by the existing suite. Future v1.2.0 will add
+`tests/test_cli.py` once the package restructure lands.
+
+### Compatibility
+
+- **Backward-compatible.** No API changes, no localStorage schema
+  changes, no UI changes.
+- The macOS LaunchDaemon installer (`scripts/install_daemon.sh`)
+  continues to work unchanged.
+- Existing Docker users can switch from local `docker build` to
+  `docker pull ghcr.io/...` without rebuilding.
+- `pip install -e .` from a clone now registers a console script —
+  previously users ran `python app.py`. The latter still works.
+
+### Known limitations
+
+- `pip install global-stock-analyser` from PyPI is **not yet
+  available**. Tracked for v1.2.0 — needs flat-layout →
+  `equityscope/` package restructure to satisfy setuptools wheel
+  layout for `templates/` and `static/`.
+- TLS via the `equityscope` CLI is `--debug`-only. Production TLS
+  paths remain: macOS daemon (mkcert), or reverse proxy (Caddy /
+  nginx) in front of Docker / systemd.
+- Windows native (non-Docker, non-WSL) install works via path #4
+  (`pip install -e .`) but has no service-manager equivalent yet.
+
+---
+
 ## [1.0.0] - 2026-05-02
 
 ### First stable release

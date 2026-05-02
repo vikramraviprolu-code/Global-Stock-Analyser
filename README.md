@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style](https://img.shields.io/badge/code%20style-pep8-orange.svg)](https://peps.python.org/pep-0008/)
 [![Tests](https://img.shields.io/badge/tests-245%20passing-brightgreen.svg)]()
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](CHANGELOG.md)
 
 Free, no-API-key, open-source equity research platform. Discover stocks via a
 filterable Screener, drill into a full 8-tab Stock Analysis page, manage local
@@ -20,6 +20,35 @@ Inspired by TradingView, FINVIZ, Koyfin, Simply Wall St, and StockAnalysis.com
 — but **free / no API keys / no scraping by default**.
 
 ---
+
+## What's new in v1.1.0
+
+**Distribution release — install on any platform.**
+
+- **GHCR Docker image** published from CI on every tag. Pull with
+  `docker pull ghcr.io/vikramraviprolu-code/global-stock-analyser:latest`
+  (multi-arch: linux/amd64 + linux/arm64). See `INSTALL.md` §3.
+- **Linux systemd installer** at `scripts/install_systemd.sh` parallels
+  the macOS LaunchDaemon path. Drops a hardened service unit at
+  `/etc/systemd/system/equityscope.service` with `NoNewPrivileges`,
+  `ProtectSystem=strict`, `MemoryDenyWriteExecute`, and journald
+  logging. See `INSTALL.md` §2.
+- **`equityscope` console script** + `cli.py`. After `pip install -e .`
+  from a clone, run `equityscope --help`, `equityscope --port 8080`,
+  `equityscope --tls-cert cert.pem --tls-key key.pem`. Cross-platform
+  via Waitress (pure-Python WSGI). See `INSTALL.md` §4.
+- **`pyproject.toml`** ships with `[build-system]`, `[project.scripts]`,
+  `[tool.setuptools]` packages + py-modules + package-data —
+  `pip install -e .` works out of the box on Windows, Linux, macOS.
+- **Comprehensive docs**:
+  - `INSTALL.md` — every install path (macOS / Linux / Docker / pip)
+    with troubleshooting + upgrade + uninstall procedures.
+  - `USER_GUIDE.md` — full feature walkthrough: 14 pages of detail
+    covering every route, every alert kind, daily workflows, keyboard
+    shortcuts, glossary.
+- **PyPI publish (`pip install global-stock-analyser`) deferred to
+  v1.2.0** — needs flat-layout → `equityscope/` package restructure.
+  Today, `pip install -e .` from a clone works on every platform.
 
 ## What's new in v1.0.0
 
