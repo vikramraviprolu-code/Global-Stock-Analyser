@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style](https://img.shields.io/badge/code%20style-pep8-orange.svg)](https://peps.python.org/pep-0008/)
 [![Tests](https://img.shields.io/badge/tests-245%20passing-brightgreen.svg)]()
-[![Version](https://img.shields.io/badge/version-0.23.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
 
 Free, no-API-key, open-source equity research platform. Discover stocks via a
 filterable Screener, drill into a full 8-tab Stock Analysis page, manage local
@@ -20,6 +20,26 @@ Inspired by TradingView, FINVIZ, Koyfin, Simply Wall St, and StockAnalysis.com
 — but **free / no API keys / no scraping by default**.
 
 ---
+
+## What's new in v1.0.0
+
+**First stable release.** All PRD scope (Build Steps 1-13) shipped, all
+six 1.0-readiness gates closed in v0.23.0, CI matrix green on Python
+3.9 / 3.11 / 3.12. **No code changes** vs. v0.23.0 — this is a pure
+tag-bump promotion to mark the project's stability commitment.
+
+**What v1.0.0 means:**
+- API surface (`/api/*`) is stable. Breaking changes go behind a major
+  bump.
+- localStorage schema (`equityscope.*` keys) is stable. Migrations
+  documented if/when needed.
+- Backward compatibility: any v0.21.0+ install upgrades cleanly.
+- SemVer adhered to from this tag forward.
+
+**Out of scope for 1.0:**
+- No multi-user mode, no auth, no SaaS deployment.
+- No paid data sources. Free public providers only (Stooq + yfinance).
+- Single-tenant local-host browser app remains the design center.
 
 ## What's new in v0.23.0
 

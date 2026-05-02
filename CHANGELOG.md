@@ -4,6 +4,59 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [SemVer](https://semver.org/).
 
+## [1.0.0] - 2026-05-02
+
+### First stable release
+
+No code changes vs. v0.23.0. This is a pure tag-bump release marking
+the project's transition to a stable SemVer commitment.
+
+**What 1.0.0 promises:**
+
+- **Stable API surface.** All routes under `/api/*` and the v2 analyse
+  payload schema (`/api/analyze/v2`) are frozen at this tag. Additions
+  remain backward-compatible; removals or renames require a 2.x bump.
+- **Stable localStorage schema.** Every `equityscope.*` key in use as
+  of v0.23.0 is part of the public contract:
+  `equityscope.watchlists`, `equityscope.portfolio`,
+  `equityscope.alerts`, `equityscope.customPresets`,
+  `equityscope.prefs`, `equityscope.colState`,
+  `equityscope.riskProfile`, `equityscope.consent`. Schema changes
+  require a documented migration.
+- **Stable install path.** The macOS LaunchDaemon location
+  `/usr/local/global-stock-analyser/` and the local hostname
+  `Global-Stock-Analyser/Local` are part of the contract — moving
+  them needs a 2.x bump and a migration script.
+- **Stable security posture.** The CSP, threat model, RFC 9116
+  `security.txt`, and dependency-audit allow-list discipline
+  established in v0.20.0-v0.23.0 carry forward.
+- **SemVer from this tag forward.** Breaking changes → MAJOR;
+  backward-compatible features → MINOR; bug-fix-only releases → PATCH.
+
+**Provenance to 1.0:**
+
+- v0.4.0–v0.6.x — TLS hardening (mkcert local CA + green padlock)
+- v0.7.0 — LAN exposure + CSRF lockdown
+- v0.13.0 — Cross-validated Stooq + yfinance source
+- v0.17.0 — Browser-local alerts engine
+- v0.18.0 — News + sentiment digest
+- v0.19.0 — Explainer drawers
+- v0.20.0 — Risk profiler + GDPR + EU AI Act compliance
+- v0.21.0 — Polish + perf budget (closes PRD Build Steps 1-13)
+- v0.22.0 — Wire-up: risk profile → Recommendation, watchlist export,
+  global alerts polling
+- v0.22.1 — Bucket chip on Recommendation
+- v0.23.0 — 1.0 readiness gates (CSP coverage, render-smoke,
+  bundle + dep audits, install audit checklist)
+
+**Test count:** 245 passing (Python 3.9 / 3.11 / 3.12).
+**Pending upstream CVEs:** 2 (documented in SECURITY.md, no PyPI fix
+yet).
+**Bundle budgets:** all 12 within budget per
+`scripts/check_bundle_sizes.sh`.
+
+---
+
 ## [0.23.0] - 2026-05-02
 
 ### Added — 1.0 readiness: CSP coverage, render-smoke, bundle / dep audits
